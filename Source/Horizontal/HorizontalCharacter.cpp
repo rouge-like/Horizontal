@@ -35,6 +35,7 @@ AHorizontalCharacter::AHorizontalCharacter()
 
 	// configure the character comps
 	GetMesh()->SetOwnerNoSee(true);
+	GetMesh()->SetOnlyOwnerSee(false);
 	GetMesh()->FirstPersonPrimitiveType = EFirstPersonPrimitiveType::WorldSpaceRepresentation;
 
 	GetCapsuleComponent()->SetCapsuleSize(34.0f, 96.0f);
