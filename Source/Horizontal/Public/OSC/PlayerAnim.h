@@ -6,10 +6,12 @@
 #include "Animation/AnimInstance.h"
 #include "PlayerAnim.generated.h"
 
+enum class EHandsState : uint8;
 /**
  * 
  */
 class APlayerBase;
+class UAnimMontage;
 
 UCLASS()
 class HORIZONTAL_API UPlayerAnim : public UAnimInstance
@@ -31,8 +33,14 @@ public:
  	float DirV;
 
  	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
- 	bool bIsCrouch;
+ 	bool bIsCrouched;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	bool bIsSprint;
+	bool bIsSprinting;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	EHandsState HandsState;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float PitchAngle;
 };

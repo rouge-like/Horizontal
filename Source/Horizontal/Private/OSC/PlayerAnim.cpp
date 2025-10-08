@@ -19,10 +19,14 @@ void UPlayerAnim::NativeUpdateAnimation(float DeltaSeconds)
 	if (OwnerPawn)
 	{
 		Velocity = OwnerPawn->GetVelocity();
-		bIsCrouch = OwnerPawn->IsCrouched();
-		bIsSprint = OwnerPawn->IsSprinting();
+		bIsCrouched = OwnerPawn->IsCrouched();
+		bIsSprinting = OwnerPawn->IsSprinting();
 
+		HandsState = OwnerPawn->GetHandsState();
+		
 		DirV = FVector::DotProduct(Velocity, OwnerPawn->GetActorForwardVector());
 		DirH = FVector::DotProduct(Velocity, OwnerPawn->GetActorRightVector());
+
+		PitchAngle = -OwnerPawn->GetBaseAimRotation().Pitch;
 	}
 }

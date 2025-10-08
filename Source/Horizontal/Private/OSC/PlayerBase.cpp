@@ -1,9 +1,15 @@
 #include "Public/OSC/PlayerBase.h"
-
 #include "EnhancedInputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "InputAction.h"
 #include "Net/UnrealNetwork.h"
+#include "CollisionShape.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/OverlapResult.h"
+#include "Engine/World.h"
+#include "Math/UnrealMathUtility.h"
+#include "OSC/InventoryComponent.h"
+#include "OSC/UsableItemBase.h"
 
 APlayerBase::APlayerBase()
 {
@@ -17,6 +23,8 @@ APlayerBase::APlayerBase()
 		Movement->MaxWalkSpeed = WalkSpeed;
 		Movement->MaxWalkSpeedCrouched = CrouchSpeed;
 	}
+
+	InventoryComp = CreateDefaultSubobject<UInventoryComponent>("InventoryComp");
 }
 
 void APlayerBase::BeginPlay()
@@ -49,7 +57,19 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 			EnhancedInput->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerBase::HandleSprintReleased);
 			EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerBase::HandleSprintReleased);
 		}
+
+		if (PickupAction)
+		{
+			EnhancedInput->BindAction(PickupAction, ETriggerEvent::Started, this, &APlayerBase::HandlePickupStarted);
+		}
+
+		if (DropAction)
+		{
+			EnhancedInput->BindAction(DropAction, ETriggerEvent::Started, this, &APlayerBase::HandleDropStarted);
+		}
 	}
+
+	OnSetUpPlayerInputDelegate.Broadcast(PlayerInputComponent);
 }
 
 void APlayerBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -57,6 +77,7 @@ void APlayerBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(APlayerBase, bIsSprinting);
+	DOREPLIFETIME(APlayerBase, HandsState);
 }
 
 void APlayerBase::RefreshMovementSpeed()
@@ -84,6 +105,21 @@ void APlayerBase::SetSprintingInternal(bool bNewSprinting)
 
 	bIsSprinting = bNewSprinting;
 	RefreshMovementSpeed();
+}
+
+void APlayerBase::SetPickupInternal(AUsableItemBase* Item)
+{
+	if (!IsValid(Item))
+	{
+		return;
+	}
+
+	Item->OnPickup(this);
+}
+
+void APlayerBase::SetDropInternal()
+{
+	InventoryComp->RemoveSelectedItem();
 }
 
 void APlayerBase::HandleCrouchPressed()
@@ -136,6 +172,67 @@ void APlayerBase::HandleSprintReleased()
 
 	ServerSetSprinting(false);
 }
+void APlayerBase::HandlePickupStarted()
+{
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	GetActorEyesViewPoint(ViewLocation, ViewRotation);
+
+	const FVector OverlapCenter = ViewLocation + ViewRotation.Vector() * (PickupRadius * 0.5f);
+	const float QueryRadius = PickupRadius;
+
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectParams.AddObjectTypesToQuery(ECC_PhysicsBody);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PlayerPickup), false, this);
+	QueryParams.AddIgnoredActor(this);
+
+	TArray<FOverlapResult> Overlaps;
+	AUsableItemBase* ClosestItem = nullptr;
+	float ClosestDistanceSq = MAX_FLT;
+
+	DrawDebugSphere(GetWorld(), OverlapCenter, QueryRadius, 12, FColor::Purple);
+	if (GetWorld()->OverlapMultiByObjectType(Overlaps, OverlapCenter, FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(QueryRadius), QueryParams))
+	{
+		for (const FOverlapResult& Result : Overlaps)
+		{
+			AUsableItemBase* Candidate = Cast<AUsableItemBase>(Result.GetActor());
+			if (!IsValid(Candidate) || !Candidate->CanBePickedUp())
+			{
+				continue;
+			}
+
+			const float DistanceSq = FVector::DistSquared(Candidate->GetActorLocation(), ViewLocation);
+			if (DistanceSq < ClosestDistanceSq)
+			{
+				ClosestDistanceSq = DistanceSq;
+				ClosestItem = Candidate;
+			}
+		}
+	}
+
+	if (!IsValid(ClosestItem))
+	{
+		return;
+	}
+
+	if (IsLocallyControlled())
+	{
+		SetPickupInternal(ClosestItem);
+	}
+
+	ServerSetPickup(ClosestItem);
+}
+
+void APlayerBase::HandleDropStarted()
+{
+	if (IsLocallyControlled())
+	{
+		SetDropInternal();
+	}
+	ServerSetDrop();
+}
 
 void APlayerBase::ServerSetSprinting_Implementation(bool bNewSprinting)
 {
@@ -148,6 +245,32 @@ void APlayerBase::ServerSetSprinting_Implementation(bool bNewSprinting)
 	}
 
 	SetSprintingInternal(bNewSprinting);
+}
+
+void APlayerBase::ServerSetPickup_Implementation(AUsableItemBase* Item)
+{
+	if (!IsValid(Item))
+	{
+		return;
+	}
+
+	const float DistanceSq = FVector::DistSquared(Item->GetActorLocation(), GetActorLocation());
+	if (DistanceSq > FMath::Square(PickupRadius))
+	{
+		return;
+	}
+
+	if (!Item->CanBePickedUp())
+	{
+		return;
+	}
+
+	SetPickupInternal(Item);
+}
+
+void APlayerBase::ServerSetDrop_Implementation()
+{
+	SetDropInternal();
 }
 
 void APlayerBase::OnRep_IsSprinting()
