@@ -27,6 +27,7 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	void OnMovementFinished();
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,

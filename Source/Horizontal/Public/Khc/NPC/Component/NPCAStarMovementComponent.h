@@ -1,10 +1,11 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "NPCAStarMovementComponent.generated.h"
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementFinished);
 
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -13,20 +14,28 @@ class HORIZONTAL_API UNPCAStarMovementComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
 	UNPCAStarMovementComponent();
 
-	void SetFollowTarget(AActor* NewTarget);
+	void StartMovingTo(const FVector& NewDestination);
+
+	UPROPERTY(BlueprintAssignable)
+	FOnMovementFinished OnMovementFinished;
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	UPROPERTY()
-	AActor* FollowTarget;
 
 public:
-	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
+
+	UPROPERTY()
+	class AAStarGridManager* GridManager;
+
+	// 계산된 경로를 저장할 배열
+	TArray<FVector> CurrentPath;
+	int32 CurrentPathIndex = 0;
+
+	FVector Destination;
+	bool bIsMoving = false;
 };

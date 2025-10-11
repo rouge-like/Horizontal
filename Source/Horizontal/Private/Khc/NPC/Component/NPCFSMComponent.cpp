@@ -1,15 +1,13 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "Khc/NPC/Component/NPCFSMComponent.h"
+﻿#include "Khc/NPC/Component/NPCFSMComponent.h"
 
 #include "AIController.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
 #include "Khc/Gimmick/SafetyZone.h"
 #include "Kismet/GameplayStatics.h"
+#include "Khc/NPC/Component/NPCAStarMovementComponent.h"
+#include "Khc/NPC/NPCBase.h"
 
 
-// Sets default values for this component's properties
 UNPCFSMComponent::UNPCFSMComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -22,6 +20,20 @@ void UNPCFSMComponent::BeginPlay()
 	Super::BeginPlay();
 	
 	SafeZoneTarget = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
+
+	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
+	if (OwnerPawn && OwnerPawn->AStarMovementComp)
+	{
+		OwnerPawn->AStarMovementComp->OnMovementFinished.AddDynamic(this, &UNPCFSMComponent::OnMovementFinished);
+	}
+}
+
+void UNPCFSMComponent::OnMovementFinished()
+{
+	if (CurrentState == ENPCState::Move)
+	{
+		SetState(ENPCState::Idle);
+	}
 }
 
 
@@ -35,15 +47,6 @@ void UNPCFSMComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	case ENPCState::Wait:
 		break;
 	case ENPCState::Move:
-		if (SafeZoneTarget)
-		{
-			float DistanceToTarget = FVector::Dist(GetOwner()->GetActorLocation(), SafeZoneTarget->GetActorLocation());
-
-			if (DistanceToTarget < ArrivalThreshold)
-			{
-				SetState(ENPCState::Idle);
-			}
-		}
 		break;
 	case ENPCState::Idle:
 		break;
@@ -65,29 +68,32 @@ void UNPCFSMComponent::SetState(ENPCState NewState)
 	case ENPCState::Move:
 		if (SafeZoneTarget)
 		{
-			// 내비게이션 시스템을 이용해 SafeZone으로 이동을 시작합니다.
-			// 이 함수를 사용하려면 NPC가 AIController를 가지고 있어야 합니다.
-			UAIBlueprintHelperLibrary::SimpleMoveToActor(GetOwner()->GetInstigatorController(), SafeZoneTarget);
-			UE_LOG(LogTemp, Warning, TEXT("State Changed to Move. Moving to SafeZone."));
+			ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
+			if (OwnerPawn && OwnerPawn->AStarMovementComp)
+			{
+				// AStarMovementComponent에게 목적지를 알려주고 이동 시작
+				OwnerPawn->AStarMovementComp->StartMovingTo(SafeZoneTarget->GetActorLocation());
+				UE_LOG(LogTemp, Warning, TEXT("State Changed to Move. Moving to SafeZone."));
+			}
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("SafeZoneTarget을 찾을 수 없습니다!"));
+			UE_LOG(LogTemp, Error, TEXT("SafeZoneTarget can't find."));
+			SetState(ENPCState::Wait); // 목적지가 없으면 다시 Wait 상태로
 		}
 		break;
 	case ENPCState::Idle:
 		{
-			AController* Controller = GetOwner()->GetInstigatorController();
-			if (Controller)
+			ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
+			if (OwnerPawn && OwnerPawn->GetController())
 			{
-				AAIController* AIController = Cast<AAIController>(Controller);
+				AAIController* AIController = Cast<AAIController>(OwnerPawn->GetController());
 				if (AIController)
 				{
 					AIController->StopMovement();
 				}
-				UE_LOG(LogTemp, Warning, TEXT("Arrived at SafeZone. State Changed to Idle."));
-				break;
 			}
+			UE_LOG(LogTemp, Warning, TEXT("Arrived at SafeZone. State Changed to Idle."));
 		}
 	default:
 		break;
