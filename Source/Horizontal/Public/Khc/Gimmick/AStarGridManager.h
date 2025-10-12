@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Khc/Gimmick/PathLinkZone.h"
 #include "AStarGridManager.generated.h"
 
 USTRUCT(BlueprintType)
@@ -36,6 +37,8 @@ struct FPathNode
     // 경로를 역추적하기 위해 부모 노드 저장
     FPathNode* ParentNode = nullptr;
 
+    APathLinkZone* LinkedActor = nullptr;
+
     // 생성자
     FPathNode() {}
     FPathNode(FIntPoint InGridIndex, FVector InWorldLocation)
@@ -63,6 +66,9 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "A* Grid")
     FVector2D GridWorldSize = FVector2D(10000.f, 10000.f);
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "A* Grid")
+    class UBoxComponent* GridArea;
 
     UPROPERTY(EditAnywhere, Category = "A* Grid")
     float NodeRadius = 50.f;

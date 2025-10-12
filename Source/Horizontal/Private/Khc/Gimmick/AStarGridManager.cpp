@@ -199,6 +199,14 @@ void AAStarGridManager::CreateGrid()
         WeightActors.Add(Cast<AWeightZone>(Actor));
     }
 
+    TArray<AActor*> FoundLinks;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);
+    TArray<APathLinkZone*> NavLinks;
+    for (AActor* Actor : FoundLinks)
+    {
+        NavLinks.Add(Cast<APathLinkZone>(Actor));
+    }
+
     for (int32 Y = 0; Y < GridSizeY; ++Y)
     {
         for (int32 X = 0; X < GridSizeX; ++X)
@@ -209,6 +217,16 @@ void AAStarGridManager::CreateGrid()
                 + FVector::RightVector * (Y * NodeDiameter + NodeRadius);
             Grid[Index].WorldLocation = WorldPoint;
             Grid[Index].GridIndex = FIntPoint(X, Y);
+
+            for (APathLinkZone* Link : NavLinks)
+            {
+                if (Link && FVector::DistSquared(Grid[Index].WorldLocation, Link->GetActorLocation()) < FMath::Square(NodeRadius))
+                {
+                    Grid[Index].LinkedActor = Link;
+                    Grid[Index].bIsObstacle = false; // 링크 지점은 장애물이 아니라고 보장
+                    break;
+                }
+            }
 
             // 장애물 검사
             FCollisionQueryParams QueryParams;
@@ -298,6 +316,15 @@ void AAStarGridManager::GetNeighborNodes(const FPathNode* Node, TArray<FPathNode
                 int32 Index = checkY * GridSizeX + checkX;
                 OutNeighbors.Add(&Grid[Index]);
             }
+        }
+    }
+
+    if (Node->LinkedActor && Node->LinkedActor->TargetPoint)
+    {
+        FPathNode* TargetLinkNode = GetNodeFromWorldLocation(Node->LinkedActor->TargetPoint->GetActorLocation());
+        if (TargetLinkNode)
+        {
+            OutNeighbors.Add(TargetLinkNode);
         }
     }
 }
