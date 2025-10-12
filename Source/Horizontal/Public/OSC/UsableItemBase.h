@@ -29,7 +29,7 @@ public:
 
     virtual void OnRep_Owner() override;
 
-    void StartUse();
+    virtual void StartUse();
     void StopUse();
 
     UFUNCTION(BlueprintCallable, Category = "Item")

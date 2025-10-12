@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "OSC/UsableItemBase.h"
+
+struct FVector_NetQuantize;
+struct FVector_NetQuantizeNormal;
 #include "AimableItemBase.generated.h"
 
 UCLASS()
@@ -23,6 +26,7 @@ protected:
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	virtual void StartUse() override;
 
 	void StartAim();
 	void StopAim();
@@ -31,9 +35,16 @@ public:
 	
 protected:
 	virtual void OnEquip() override;
+	virtual void OnUnequip() override;
 	virtual void HandleStartAim();
 	virtual void HandleStopAim();
 
+	virtual bool GatherUseData(FVector& OutStartLocation, FVector& OutDirection) const;
+	bool ConsumeUseData(FVector& OutStartLocation, FVector& OutDirection);
+	void SetPendingUseData(const FVector& InStartLocation, const FVector& InDirection, bool bIsValid);
+
+	UFUNCTION(Server, Reliable)
+	void ServerStartUseWithAimData(const FVector_NetQuantize& ClientStartLocation, const FVector_NetQuantizeNormal& ClientDirection, bool bClientProvidedData);
 	UFUNCTION(Server, Reliable)
 	void ServerStartAim();
 	UFUNCTION(Server, Reliable)
@@ -56,6 +67,10 @@ protected:
 	float AimingFOV;
 	UPROPERTY(EditAnywhere)
 	float OriginFOV;
+
+	FVector PendingUseStartLocation = FVector::ZeroVector;
+	FVector PendingUseDirection = FVector::ZeroVector;
+	bool bHasPendingUseData = false;
 	
 	UFUNCTION()
 	void OnRep_IsAiming(bool Previous);

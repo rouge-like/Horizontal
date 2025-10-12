@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "OSC/Item/AimableItemBase.h"
@@ -126,6 +126,13 @@ void AAimableItemBase::OnEquip()
 	}
 }
 
+void AAimableItemBase::OnUnequip()
+{
+	Super::OnUnequip();
+
+	if (bIsAiming) StopAim();
+}
+
 void AAimableItemBase::HandleStartAim()
 {
 	bIsAiming = true;
@@ -176,4 +183,78 @@ void AAimableItemBase::ServerStopAim_Implementation()
 	HandleStopAim();
 }
 
+void AAimableItemBase::StartUse()
+{
+    FVector StartLocation = FVector::ZeroVector;
+    FVector Direction = FVector::ZeroVector;
+    const bool bHasData = GatherUseData(StartLocation, Direction);
+
+    if (HasAuthority())
+    {
+        SetPendingUseData(StartLocation, Direction, bHasData);
+        Super::StartUse();
+        return;
+    }
+
+    if (bHasData)
+    {
+        const FVector NormalizedDirection = Direction.GetSafeNormal();
+        if (!NormalizedDirection.IsNearlyZero())
+        {
+            const FVector_NetQuantize NetStart(StartLocation);
+            const FVector_NetQuantizeNormal NetDirection(NormalizedDirection);
+            ServerStartUseWithAimData(NetStart, NetDirection, true);
+            return;
+        }
+    }
+
+    Super::StartUse();
+}
+
+bool AAimableItemBase::GatherUseData(FVector& OutStartLocation, FVector& OutDirection) const
+{
+    OutStartLocation = FVector::ZeroVector;
+    OutDirection = FVector::ZeroVector;
+    return false;
+}
+
+void AAimableItemBase::SetPendingUseData(const FVector& InStartLocation, const FVector& InDirection, bool bIsValid)
+{
+    const FVector NormalizedDirection = InDirection.GetSafeNormal();
+    bHasPendingUseData = bIsValid && !NormalizedDirection.IsNearlyZero();
+    PendingUseStartLocation = InStartLocation;
+    PendingUseDirection = NormalizedDirection;
+}
+
+bool AAimableItemBase::ConsumeUseData(FVector& OutStartLocation, FVector& OutDirection)
+{
+    if (!bHasPendingUseData)
+    {
+        OutStartLocation = FVector::ZeroVector;
+        OutDirection = FVector::ZeroVector;
+        return false;
+    }
+
+    OutStartLocation = PendingUseStartLocation;
+    OutDirection = PendingUseDirection;
+    bHasPendingUseData = false;
+    return true;
+}
+
+void AAimableItemBase::ServerStartUseWithAimData_Implementation(const FVector_NetQuantize& ClientStartLocation, const FVector_NetQuantizeNormal& ClientDirection, bool bClientProvidedData)
+{
+    const FVector StartLocation(ClientStartLocation);
+    const FVector Direction(ClientDirection);
+    const bool bValidData = bClientProvidedData && !Direction.IsNearlyZero();
+    SetPendingUseData(StartLocation, Direction, bValidData);
+
+    if (bValidData)
+    {
+        HandleStartUse();
+    }
+    else
+    {
+        Super::StartUse();
+    }
+}
 
