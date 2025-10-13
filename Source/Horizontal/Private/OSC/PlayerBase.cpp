@@ -7,6 +7,7 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
+#include "Khc/Player/PlayerInteractionComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/UsableItemBase.h"
@@ -25,6 +26,7 @@ APlayerBase::APlayerBase()
 	}
 
 	InventoryComp = CreateDefaultSubobject<UInventoryComponent>("InventoryComp");
+	InteractionComponent = CreateDefaultSubobject<UPlayerInteractionComponent>(TEXT("InteractionComponent"));
 }
 
 void APlayerBase::BeginPlay()
@@ -67,6 +69,11 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 		{
 			EnhancedInput->BindAction(DropAction, ETriggerEvent::Started, this, &APlayerBase::HandleDropStarted);
 		}
+	}
+
+	if (InteractionComponent)
+	{
+		InteractionComponent->SetupPlayerInput(PlayerInputComponent);
 	}
 
 	OnSetUpPlayerInputDelegate.Broadcast(PlayerInputComponent);

@@ -24,8 +24,13 @@ class HORIZONTAL_API UNPCInteractionComponent : public UActorComponent
 public:
 	UNPCInteractionComponent();
 
+	void InitiateInteraction(ACharacter* InteractingPlayer);
+
 protected:
 	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	void HandleEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,

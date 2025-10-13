@@ -128,4 +128,6 @@ protected:
 	// 스프린트 상태 복제 통지를 처리
 	UFUNCTION()
 	void OnRep_IsSprinting();
+
+	class UPlayerInteractionComponent* InteractionComponent;
 };

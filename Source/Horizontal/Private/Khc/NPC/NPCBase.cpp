@@ -4,10 +4,12 @@
 #include "Public/Khc/NPC/NPCBase.h"
 
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Khc/NPC/Component/NPCAStarMovementComponent.h"
 #include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
-#include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 ANPCBase::ANPCBase()
@@ -19,6 +21,8 @@ ANPCBase::ANPCBase()
 	InteractionComp   = CreateDefaultSubobject<UNPCInteractionComponent>(TEXT("InteractionComp"));
 	InteractionComp->SphereComp->SetSphereRadius(100.f);
 	InteractionComp->SphereComp->SetupAttachment(RootComponent);
+	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
+	InteractionUI->SetupAttachment(RootComponent);
 }
 
 void ANPCBase::BeginPlay()
@@ -29,6 +33,9 @@ void ANPCBase::BeginPlay()
 	{
 		InteractionComp->OnPlayerDetected.AddDynamic(this, &ANPCBase::OnPlayerDetected);
 	}
+
+	if (InteractionUI)
+		InteractionUI->SetVisibility(false);
 }
 
 void ANPCBase::OnPlayerDetected(AActor* DetectedPlayer)
@@ -51,4 +58,13 @@ void ANPCBase::Server_RequestInteraction_Implementation()
 void ANPCBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	//BillboardUI();
 }
+
+// void ANPCBase::BillboardUI()
+// {
+// 	AActor* cam = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+// 	FRotator rot = UKismetMathLibrary::MakeRotFromXZ(-cam->GetActorForwardVector(), cam->GetActorUpVector());
+//
+// 	InteractionUI->SetWorldRotation(rot);
+// }

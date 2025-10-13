@@ -26,6 +26,8 @@ protected:
 public:
 	virtual void Tick(float DeltaTime) override;
 
+	//void BillboardUI();
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
 	class UNPCFSMComponent* FSMComp;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
@@ -35,5 +37,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|AI")
 	TObjectPtr<ASafetyZone> TargetSafetyZone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
+	class UWidgetComponent* InteractionUI;
 
 };
