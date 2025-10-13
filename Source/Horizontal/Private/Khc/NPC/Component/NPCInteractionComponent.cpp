@@ -34,15 +34,11 @@ void UNPCInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 void UNPCInteractionComponent::HandleBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor && OtherActor != GetOwner() && OtherActor->IsA<ACharacter>())
+	if (GetOwner()->HasAuthority())
 	{
-		ANPCBase* MyOwner = Cast<ANPCBase>(GetOwner());
-		if (MyOwner && MyOwner->FSMComp)
+		if (OtherActor && OtherActor != GetOwner() && OtherActor->IsA<ACharacter>())
 		{
-			if (MyOwner->FSMComp->GetState() == ENPCState::Wait)
-			{
-				OnPlayerDetected.Broadcast(OtherActor);
-			}
+			OnPlayerDetected.Broadcast(OtherActor);
 		}
 	}
 }

@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Khc/NPC/Component/NPCAStarMovementComponent.h"
 #include "Khc/NPC/NPCBase.h"
+#include "Net/UnrealNetwork.h"
 
 
 UNPCFSMComponent::UNPCFSMComponent()
@@ -19,13 +20,25 @@ void UNPCFSMComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	SafeZoneTarget = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
+	
 
 	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
 	if (OwnerPawn && OwnerPawn->AStarMovementComp)
 	{
 		OwnerPawn->AStarMovementComp->OnMovementFinished.AddDynamic(this, &UNPCFSMComponent::OnMovementFinished);
 	}
+}
+
+void UNPCFSMComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UNPCFSMComponent, CurrentState);
+}
+
+void UNPCFSMComponent::OnRep_CurrentState()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Client State Synced: %d"), CurrentState);
 }
 
 void UNPCFSMComponent::OnMovementFinished()
@@ -56,35 +69,37 @@ void UNPCFSMComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 
 void UNPCFSMComponent::SetState(ENPCState NewState)
 {
-	if (CurrentState == NewState)
-	{
-		return;
-	}
+	if (!GetOwner()->HasAuthority()) return;
+	if (CurrentState == NewState) return;
 
-	switch (NewState)
+	// 상태 변경을 먼저 기록
+	CurrentState = NewState;
+	OnRep_CurrentState(); 
+       
+	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
+	if (!OwnerPawn) return; // 주인이 없으면 아무것도 하지 않음
+	
+	switch (CurrentState)
 	{
 	case ENPCState::Wait:
 		break;
 	case ENPCState::Move:
-		if (SafeZoneTarget)
 		{
-			ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
-			if (OwnerPawn && OwnerPawn->AStarMovementComp)
+			if (OwnerPawn->TargetSafetyZone && OwnerPawn->AStarMovementComp)
 			{
-				// AStarMovementComponent에게 목적지를 알려주고 이동 시작
-				OwnerPawn->AStarMovementComp->StartMovingTo(SafeZoneTarget->GetActorLocation());
-				UE_LOG(LogTemp, Warning, TEXT("State Changed to Move. Moving to SafeZone."));
+				OwnerPawn->AStarMovementComp->StartMovingTo(OwnerPawn->TargetSafetyZone->GetActorLocation());
+				UE_LOG(LogTemp, Warning, TEXT("Server: State Changed to Move. Moving to SafeZone."));
 			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("Server: TargetSafetyZone is not set on NPC Actor!"));
+				// 실패했으므로 상태를 다시 Wait로 되돌립니다.
+				SetState(ENPCState::Wait); 
+			}
+			break;
 		}
-		else
-		{
-			UE_LOG(LogTemp, Error, TEXT("SafeZoneTarget can't find."));
-			SetState(ENPCState::Wait); // 목적지가 없으면 다시 Wait 상태로
-		}
-		break;
 	case ENPCState::Idle:
 		{
-			ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
 			if (OwnerPawn && OwnerPawn->GetController())
 			{
 				AAIController* AIController = Cast<AAIController>(OwnerPawn->GetController());
@@ -94,10 +109,12 @@ void UNPCFSMComponent::SetState(ENPCState NewState)
 				}
 			}
 			UE_LOG(LogTemp, Warning, TEXT("Arrived at SafeZone. State Changed to Idle."));
+			break;
 		}
 	default:
 		break;
 	}
+	
 }
 
 ENPCState UNPCFSMComponent::GetState()

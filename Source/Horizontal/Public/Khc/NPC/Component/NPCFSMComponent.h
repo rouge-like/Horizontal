@@ -27,6 +27,11 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION()
+	void OnRep_CurrentState();
+	
 	void OnMovementFinished();
 public:
 	// Called every frame
@@ -36,7 +41,7 @@ public:
 	void SetState(ENPCState NewState);
 	ENPCState GetState();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="FSM")
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentState)
 	ENPCState CurrentState = ENPCState::Wait;
 
 	UPROPERTY(EditAnywhere, Category="FSM")

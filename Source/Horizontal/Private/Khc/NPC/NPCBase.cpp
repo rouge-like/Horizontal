@@ -33,13 +33,18 @@ void ANPCBase::BeginPlay()
 
 void ANPCBase::OnPlayerDetected(AActor* DetectedPlayer)
 {
-	if (FSMComp && AStarMovementComp)
-	{
-		// FSM 상태 'Move'로 변경
-		FSMComp->SetState(ENPCState::Move);
+	if (!HasAuthority()) return;
 
-		UE_LOG(LogTemp, Warning, TEXT("이동 시작"));
+	// FSMComp가 유효한지 여기서 직접 확인하고 상태 변경을 지시합니다.
+	if (FSMComp && FSMComp->GetState() == ENPCState::Wait)
+	{
+		FSMComp->SetState(ENPCState::Move);
+		UE_LOG(LogTemp, Warning, TEXT("Server: State change to Move requested."));
 	}
+}
+
+void ANPCBase::Server_RequestInteraction_Implementation()
+{
 }
 
 

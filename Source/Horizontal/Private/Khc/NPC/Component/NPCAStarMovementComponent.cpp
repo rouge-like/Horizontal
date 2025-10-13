@@ -1,5 +1,6 @@
 ﻿#include "Khc/NPC/Component/NPCAStarMovementComponent.h"
 #include "Khc/Gimmick/AStarGridManager.h"
+#include "Khc/Gimmick/AStarNavigationManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Pawn.h"
 #include "DrawDebugHelpers.h"
@@ -11,20 +12,14 @@ UNPCAStarMovementComponent::UNPCAStarMovementComponent()
 
 void UNPCAStarMovementComponent::BeginPlay()
 {
-
-	GridManager = Cast<AAStarGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarGridManager::StaticClass()));
+    NavigationManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
+	//GridManager = Cast<AAStarGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarGridManager::StaticClass()));
 }
 
 void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType,
                                                FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	
-    if (!bIsMoving || !GridManager || !GridManager->IsGridReady())
-    {
-        return; // 아직 준비 안됐으면 아무것도 하지 않음
-    }
 
     if (bIsMoving)
     {
@@ -66,7 +61,7 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
     else // 경로의 마지막 지점까지 모두 통과했을 때
     {
         // 도착 판정: 최종 목적지와의 실제 거리를 확인
-        if (FVector::Dist2D(GetOwner()->GetActorLocation(), Destination) < 150.f)
+        if (FVector::Dist2D(GetOwner()->GetActorLocation(), Destination) < 50000.f)
         {
             bIsMoving = false; // 이동 중지
             OnMovementFinished.Broadcast(); // 이동 완료 신호 방송
@@ -83,26 +78,26 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
 
 void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
 {
-    if (!GridManager || !GridManager->IsGridReady())
+    if (!NavigationManager)
     {
-        UE_LOG(LogTemp, Warning, TEXT("AStarMovementComponent: GridManager not ready."));
+        UE_LOG(LogTemp, Error, TEXT("AStarMovementComponent: AStarNavigationManager not found!"));
         return;
     }
 
     Destination = NewDestination;
     CurrentPathIndex = 0;
 
-    // 이동 시작 시 경로를 한 번만 계산
-    bool bPathFound = GridManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
+    // 이제 GridManager가 아닌, NavigationManager의 FindPath를 직접 호출합니다.
+    bool bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
 
     if (bPathFound)
     {
-        bIsMoving = true; // 경로를 찾았을 때만 이동 시작
+        bIsMoving = true;
         UE_LOG(LogTemp, Log, TEXT("New path found with %d waypoints."), CurrentPath.Num());
     }
     else
     {
-        bIsMoving = false; // 경로를 못 찾았으면 이동하지 않음
+        bIsMoving = false;
         UE_LOG(LogTemp, Warning, TEXT("Path to destination could not be found!"));
     }
 }

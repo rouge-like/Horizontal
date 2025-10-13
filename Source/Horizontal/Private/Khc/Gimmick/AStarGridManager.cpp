@@ -1,16 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Khc/Gimmick/AStarGridManager.h"
 #include "Khc/Gimmick/WeightZone.h"
 #include "Khc/Gimmick/SafetyZone.h"
 #include <Kismet/GameplayStatics.h>
 
+#include "Khc/Gimmick/AStarNavigationManager.h"
+
 // Sets default values
 AAStarGridManager::AAStarGridManager()
 {
-	PrimaryActorTick.bCanEverTick = true;
-
+    PrimaryActorTick.bCanEverTick = true;
 }
 
 bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath)
@@ -18,16 +18,19 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
     FPathNode* StartNode = GetNodeFromWorldLocation(StartLocation);
     FPathNode* TargetNode = GetNodeFromWorldLocation(TargetLocation);
 
+    // ëª©í‘œ ë…¸ë“œê°€ ìœ íš¨í•˜ë©´, ì¥ì• ë¬¼ì´ ì•„ë‹ˆë¼ê³  ê°•ì œ ì„¤ì •
     if (TargetNode)
     {
         TargetNode->bIsObstacle = false;
     }
 
+    // ì‹œì‘ ë˜ëŠ” ëª©í‘œ ë…¸ë“œê°€ ê·¸ë¦¬ë“œ ë²”ìœ„ë¥¼ ë²—ì–´ë‚¬ìœ¼ë©´ ê¸¸ì°¾ê¸° ì‹¤íŒ¨
     if (!StartNode || !TargetNode)
     {
         return false;
     }
 
+    // ëª¨ë“  ë…¸ë“œì˜ ë¹„ìš© ì •ë³´ ì´ˆê¸°í™”
     for (FPathNode& Node : Grid)
     {
         Node.GCost = BIG_NUMBER;
@@ -37,13 +40,13 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
     StartNode->GCost = 0;
     StartNode->HCost = CalculateDistance(StartNode, TargetNode);
 
-
-    TArray<FPathNode*> OpenList;
-    TSet<FPathNode*> ClosedSet;
+    TArray<FPathNode*> OpenList; // íƒìƒ‰í•  í›„ë³´ ë…¸ë“œ ëª©ë¡
+    TSet<FPathNode*> ClosedSet;  // íƒìƒ‰ì´ ì™„ë£Œëœ ë…¸ë“œ ëª©ë¡
     OpenList.Add(StartNode);
 
     while (OpenList.Num() > 0)
     {
+        // OpenListì—ì„œ F Costê°€ ê°€ì¥ ë‚®ì€ ë…¸ë“œë¥¼ CurrentNodeë¡œ ì„ íƒ
         FPathNode* CurrentNode = OpenList[0];
         for (int32 i = 1; i < OpenList.Num(); ++i)
         {
@@ -56,6 +59,7 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
         OpenList.Remove(CurrentNode);
         ClosedSet.Add(CurrentNode);
 
+        // í˜„ì¬ ë…¸ë“œê°€ ëª©í‘œ ì§€ì ì´ë©´ ê²½ë¡œë¥¼ ìƒì„±í•˜ê³  ì„±ê³µ ë°˜í™˜
         if (CurrentNode == TargetNode)
         {
             RetracePath(StartNode, TargetNode, OutPath);
@@ -67,19 +71,21 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
 
         for (FPathNode* Neighbor : Neighbors)
         {
+            // ì´ì›ƒì´ ì¥ì• ë¬¼ì´ê±°ë‚˜ ì´ë¯¸ íƒìƒ‰ ì™„ë£Œëœ ë…¸ë“œë©´ ê±´ë„ˆëœ€
             if (Neighbor->bIsObstacle || ClosedSet.Contains(Neighbor))
             {
                 continue;
             }
 
-            // °¡ÁßÄ¡¸¦ »ç¿ëÇÑ ºñ¿ë °è»ê
+            // í˜„ì¬ ë…¸ë“œë¥¼ ê±°ì³ ì´ì›ƒ ë…¸ë“œë¡œ ê°€ëŠ” ìƒˆë¡œìš´ G Cost ê³„ì‚° (ê°€ì¤‘ì¹˜ ì ìš©)
             float NewCostToNeighbor = CurrentNode->GCost + CalculateDistance(CurrentNode, Neighbor) * Neighbor->MovementWeight;
 
+            // ìƒˆë¡œìš´ ê²½ë¡œê°€ ë” ì €ë ´í•˜ê±°ë‚˜, ì•„ì§ OpenListì— ì—†ëŠ” ë…¸ë“œë¼ë©´ ì •ë³´ ê°±ì‹ 
             if (NewCostToNeighbor < Neighbor->GCost || !OpenList.Contains(Neighbor))
             {
                 Neighbor->GCost = NewCostToNeighbor;
                 Neighbor->HCost = CalculateDistance(Neighbor, TargetNode);
-                Neighbor->ParentNode = CurrentNode;
+                Neighbor->ParentNode = CurrentNode; // ê²½ë¡œ ì¶”ì ì„ ìœ„í•´ ë¶€ëª¨ ë…¸ë“œ ê¸°ë¡
 
                 if (!OpenList.Contains(Neighbor))
                 {
@@ -88,98 +94,91 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
             }
         }
     }
-    return false;
+    return false; // OpenListê°€ ë¹„ì—ˆëŠ”ë° ëª©í‘œë¥¼ ëª» ì°¾ì•˜ìœ¼ë©´ ê¸¸ì°¾ê¸° ì‹¤íŒ¨
 }
 
 void AAStarGridManager::BlurObstaclePenalties(int32 BlurSize)
 {
     int32 KernelSize = BlurSize * 2 + 1;
-	int32 KernelExtents = BlurSize;
+    int32 KernelExtents = BlurSize;
 
-	// ¿øº» ±×¸®µåÀÇ °¡ÁßÄ¡ º¹»ç
-	TArray<float> OriginalWeights;
-	OriginalWeights.SetNum(Grid.Num());
-	for(int i = 0; i < Grid.Num(); ++i)
-	{
-		OriginalWeights[i] = Grid[i].bIsObstacle ? 1.0f : 0.0f;
-	}
+    // ì›ë³¸ ê·¸ë¦¬ë“œì˜ ì¥ì• ë¬¼ ì •ë³´ë§Œ ë³µì‚¬
+    TArray<float> OriginalWeights;
+    OriginalWeights.SetNum(Grid.Num());
+    for(int i = 0; i < Grid.Num(); ++i)
+    {
+       OriginalWeights[i] = Grid[i].bIsObstacle ? 1.0f : 0.0f;
+    }
 
-	// ¸ğµç ³ëµå ¼øÈ¸ÇÏ¸ç ÁÖº¯ Àå¾Ö¹°¿¡ µû¶ó °¡ÁßÄ¡ Áõ°¡
-	for (int32 Y = 0; Y < GridSizeY; ++Y)
-	{
-		for (int32 X = 0; X < GridSizeX; ++X)
-		{
-			if (Grid[Y * GridSizeX + X].bIsObstacle) continue;
+    // ëª¨ë“  ë…¸ë“œë¥¼ ìˆœíšŒí•˜ë©° ì£¼ë³€ ì¥ì• ë¬¼ì— ë”°ë¼ ê°€ì¤‘ì¹˜ ì¦ê°€
+    for (int32 Y = 0; Y < GridSizeY; ++Y)
+    {
+       for (int32 X = 0; X < GridSizeX; ++X)
+       {
+          if (Grid[Y * GridSizeX + X].bIsObstacle) continue;
 
-			float Penalty = 0;
-			for (int32 BlurY = -KernelExtents; BlurY <= KernelExtents; ++BlurY)
-			{
-				for (int32 BlurX = -KernelExtents; BlurX <= KernelExtents; ++BlurX)
-				{
-					int32 SampleX = X + BlurX;
-					int32 SampleY = Y + BlurY;
+          float Penalty = 0;
+          for (int32 BlurY = -KernelExtents; BlurY <= KernelExtents; ++BlurY)
+          {
+             for (int32 BlurX = -KernelExtents; BlurX <= KernelExtents; ++BlurX)
+             {
+                int32 SampleX = X + BlurX;
+                int32 SampleY = Y + BlurY;
 
-					if (SampleX >= 0 && SampleX < GridSizeX && SampleY >= 0 && SampleY < GridSizeY)
-					{
-						if (OriginalWeights[SampleY * GridSizeX + SampleX] > 0) // ÁÖº¯¿¡ Àå¾Ö¹°ÀÌ ÀÖ´Ù¸é
-						{
-							// °Å¸®°¡ ¸Ö¼ö·Ï Æä³ÎÆ¼¸¦ ¾àÇÏ°Ô ºÎ¿©
-							float Distance = FMath::Sqrt(float(BlurX * BlurX + BlurY * BlurY));
-							Penalty = FMath::Max(Penalty, KernelExtents - Distance);
-						}
-					}
-				}
-			}
-			// ±âÁ¸ °¡ÁßÄ¡¿¡ Æä³ÎÆ¼
-			Grid[Y * GridSizeX + X].MovementWeight += Penalty * 25.0f;
-		}
-	}
+                if (SampleX >= 0 && SampleX < GridSizeX && SampleY >= 0 && SampleY < GridSizeY)
+                {
+                   if (OriginalWeights[SampleY * GridSizeX + SampleX] > 0) // ì£¼ë³€ì— ì¥ì• ë¬¼ì´ ìˆë‹¤ë©´
+                   {
+                      // ê±°ë¦¬ê°€ ë©€ìˆ˜ë¡ í˜ë„í‹°ë¥¼ ì•½í•˜ê²Œ ë¶€ì—¬
+                      float Distance = FMath::Sqrt(float(BlurX * BlurX + BlurY * BlurY));
+                      Penalty = FMath::Max(Penalty, KernelExtents - Distance);
+                   }
+                }
+             }
+          }
+          // ê¸°ì¡´ ê°€ì¤‘ì¹˜ì— ê³„ì‚°ëœ í˜ë„í‹° ì¶”ê°€
+          Grid[Y * GridSizeX + X].MovementWeight += Penalty * 25.0f;
+       }
+    }
 }
 
 void AAStarGridManager::BeginPlay()
 {
-	Super::BeginPlay();
-
+    Super::BeginPlay();
     CreateGrid();
 }
 
 void AAStarGridManager::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 
     if (bDebugDrawGrid && bGridReady)
     {
-        const float MaxWeight = 10.0f;
+        const float MaxWeight = 10.0f; // ìµœëŒ€ ê°€ì¤‘ì¹˜ ê°’ (ìƒ‰ìƒ ë³´ê°„ìš©)
 
         for (const FPathNode& Node : Grid)
         {
             FColor NodeColor;
-            if (Node.bIsObstacle)
+            
+            if (Node.LinkedActor) // <-- ì´ ifë¬¸ ì¶”ê°€
             {
-                NodeColor = FColor(100, 0, 0); // Àå¾Ö¹° ¾îµÎ¿î »¡°£»ö
+                NodeColor = FColor::Magenta; // í™˜ìŠ¹ì—­ ë…¸ë“œëŠ” ë§ˆì  íƒ€(ìí™ìƒ‰)ìœ¼ë¡œ í‘œì‹œ
+            }
+            else if (Node.bIsObstacle)
+            {
+                NodeColor = FColor(100, 0, 0); // ì¥ì• ë¬¼ ë…¸ë“œëŠ” ì–´ë‘ìš´ ë¹¨ê°„ìƒ‰
             }
             else
             {
-                // °¡ÁßÄ¡¿¡ µû¶ó ³ë¶õ»ö¿¡¼­ »¡°£»ö
-                //  1.0¿¡ °¡±î¿ì¸é ³ë¶õ»ö, MaxWeight¿¡ °¡±î¿ì¸é »¡°£»ö
+                // ê°€ì¤‘ì¹˜ì— ë”°ë¼ ë…¸ë€ìƒ‰ì—ì„œ ë¹¨ê°„ìƒ‰ìœ¼ë¡œ ìƒ‰ìƒ ë³´ê°„
+                // 1.0ì— ê°€ê¹Œìš°ë©´ ë…¸ë€ìƒ‰, MaxWeightì— ê°€ê¹Œìš°ë©´ ë¹¨ê°„ìƒ‰
                 float LerpAlpha = FMath::Clamp((Node.MovementWeight - 1.0f) / FMath::Max(MaxWeight - 1.0f, 1.0f), 0.0f, 1.0f);
                 NodeColor = FLinearColor::LerpUsingHSV(FLinearColor::Yellow, FLinearColor::Red, LerpAlpha).ToFColor(true);
             }
 
-            DrawDebugSphere(
-                GetWorld(),
-                Node.WorldLocation,
-                NodeRadius * 0.2f,
-                6,
-                NodeColor,
-                false,
-                -1.f,
-                0,
-                1.f
-            );
+            DrawDebugSphere(GetWorld(), Node.WorldLocation, NodeRadius * 0.2f, 6, NodeColor, false, -1.f, 0, 1.f);
         }
     }
-
 }
 
 void AAStarGridManager::CreateGrid()
@@ -215,6 +214,9 @@ void AAStarGridManager::CreateGrid()
             FVector WorldPoint = WorldBottomLeft
                 + FVector::ForwardVector * (X * NodeDiameter + NodeRadius)
                 + FVector::RightVector * (Y * NodeDiameter + NodeRadius);
+
+            WorldPoint.Z = GetActorLocation().Z;
+            
             Grid[Index].WorldLocation = WorldPoint;
             Grid[Index].GridIndex = FIntPoint(X, Y);
 
@@ -223,39 +225,39 @@ void AAStarGridManager::CreateGrid()
                 if (Link && FVector::DistSquared(Grid[Index].WorldLocation, Link->GetActorLocation()) < FMath::Square(NodeRadius))
                 {
                     Grid[Index].LinkedActor = Link;
-                    Grid[Index].bIsObstacle = false; // ¸µÅ© ÁöÁ¡Àº Àå¾Ö¹°ÀÌ ¾Æ´Ï¶ó°í º¸Àå
+                    Grid[Index].bIsObstacle = false; // ë§í¬ ì§€ì ì€ ì¥ì• ë¬¼ì´ ì•„ë‹ˆë¼ê³  ë³´ì¥
                     break;
                 }
             }
 
-            // Àå¾Ö¹° °Ë»ç
             FCollisionQueryParams QueryParams;
             QueryParams.AddIgnoredActor(this);
 
             APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
             if (PlayerPawn)
             {
-                QueryParams.AddIgnoredActor(PlayerPawn); // ÇÃ·¹ÀÌ¾î ÆùÀ» ¹«½Ã ¸ñ·Ï Ãß°¡
+                QueryParams.AddIgnoredActor(PlayerPawn); // í”Œë ˆì´ì–´ í°ì„ ë¬´ì‹œ ëª©ë¡ì— ì¶”ê°€
             }
 
             AActor* SafeZoneActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
             if (SafeZoneActor)
             {
-                QueryParams.AddIgnoredActor(SafeZoneActor); // SafetyZone ¹«½Ã ¸ñ·Ï Ãß°¡
+                QueryParams.AddIgnoredActor(SafeZoneActor); // SafetyZoneë„ ë¬´ì‹œ ëª©ë¡ì— ì¶”ê°€
             }
 
+            // ì¥ì• ë¬¼ ê²€ì‚¬
             bool bHit = GetWorld()->OverlapAnyTestByObjectType(WorldPoint, FQuat::Identity, FCollisionObjectQueryParams(ObstacleObjectTypes), FCollisionShape::MakeSphere(NodeRadius), QueryParams);
             Grid[Index].bIsObstacle = bHit;
 
             if (!bHit)
             {
-                // °¡ÁßÄ¡ Àû¿ë
+                // ê°€ì¤‘ì¹˜ ì ìš©
                 for (AWeightZone* WeightActor : WeightActors)
                 {
                     if (WeightActor && WeightActor->GetWeightBox().IsInside(WorldPoint))
                     {
                         Grid[Index].MovementWeight = WeightActor->MovementWeight;
-                        break; // Ã¹ ¹øÂ°·Î Ã£Àº °¡ÁßÄ¡¸¦ Àû¿ëÇÏ°í ¸ØÃã
+                        break; // ì²« ë²ˆì§¸ë¡œ ì°¾ì€ ê°€ì¤‘ì¹˜ë¥¼ ì ìš©í•˜ê³  ì¤‘ë‹¨
                     }
                 }
             }
@@ -263,31 +265,27 @@ void AAStarGridManager::CreateGrid()
     }
 
     BlurObstaclePenalties(3);
-
     bGridReady = true;
     UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
 }
 
 FPathNode* AAStarGridManager::GetNodeFromWorldLocation(FVector WorldLocation)
 {
-    // ±×¸®µå ¿ùµå Áß½É¿¡¼­ ¾ó¸¶³ª ¶³¾îÁ® ÀÖ´ÂÁö °è»ê
-    FVector LocalPos = WorldLocation - GetActorLocation();
-
-    // ±×¸®µåÀÇ ÁÂÇÏ´Ü ±âÁØ À§Ä¡ °è»ê
+    // ê·¸ë¦¬ë“œì˜ ì¢Œí•˜ë‹¨ ê¸°ì¤€ ìœ„ì¹˜ ê³„ì‚°
     FVector WorldBottomLeft = GetActorLocation() - FVector::ForwardVector * GridWorldSize.X / 2 - FVector::RightVector * GridWorldSize.Y / 2;
 
-    // ¿ùµå À§Ä¡°¡ ±×¸®µå ¹üÀ§ ¹ÛÀÌ¸é nullptr ¹İÈ¯
+    // ì›”ë“œ ìœ„ì¹˜ê°€ ê·¸ë¦¬ë“œ ë²”ìœ„ ë°–ì´ë©´ nullptr ë°˜í™˜
     if (WorldLocation.X < WorldBottomLeft.X || WorldLocation.X >(WorldBottomLeft.X + GridWorldSize.X) ||
         WorldLocation.Y < WorldBottomLeft.Y || WorldLocation.Y >(WorldBottomLeft.Y + GridWorldSize.Y))
     {
         return nullptr;
     }
 
-    // ±×¸®µå ³» ÆÛ¼¾Æ® À§Ä¡ °è»ê
+    // ê·¸ë¦¬ë“œ ë‚´ í¼ì„¼íŠ¸ ìœ„ì¹˜ ê³„ì‚°
     float PercentX = (WorldLocation.X - WorldBottomLeft.X) / GridWorldSize.X;
     float PercentY = (WorldLocation.Y - WorldBottomLeft.Y) / GridWorldSize.Y;
 
-    // ÆÛ¼¾Æ® À§Ä¡¸¦ ±×¸®µå ÀÎµ¦½º·Î º¯È¯
+    // í¼ì„¼íŠ¸ ìœ„ì¹˜ë¥¼ ê·¸ë¦¬ë“œ ì¸ë±ìŠ¤ë¡œ ë³€í™˜
     int32 X = FMath::Clamp(FMath::FloorToInt(GridSizeX * PercentX), 0, GridSizeX - 1);
     int32 Y = FMath::Clamp(FMath::FloorToInt(GridSizeY * PercentY), 0, GridSizeY - 1);
 
@@ -299,19 +297,17 @@ void AAStarGridManager::GetNeighborNodes(const FPathNode* Node, TArray<FPathNode
 {
     OutNeighbors.Empty();
 
+    // ì£¼ë³€ 8ë°©í–¥ íƒìƒ‰
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
         {
-            // ÀÚ±â ÀÚ½ÅÀº Á¦¿Ü
-            if (x == 0 && y == 0)
-                continue;
+            if (x == 0 && y == 0) continue; // ìê¸° ìì‹ ì€ ì œì™¸
 
             int checkX = Node->GridIndex.X + x;
             int checkY = Node->GridIndex.Y + y;
 
-            // ±×¸®µå ¹üÀ§ ¾È¿¡ ÀÖ´ÂÁö È®ÀÎ
-            if (checkX >= 0 && checkX < GridSizeX && checkY >= 0 && checkY < GridSizeY)
+            if (checkX >= 0 && checkX < GridSizeX && checkY >= 0 && checkY < GridSizeY) // ê·¸ë¦¬ë“œ ë²”ìœ„ ì•ˆì— ìˆëŠ”ì§€ í™•ì¸
             {
                 int32 Index = checkY * GridSizeX + checkX;
                 OutNeighbors.Add(&Grid[Index]);
@@ -321,10 +317,24 @@ void AAStarGridManager::GetNeighborNodes(const FPathNode* Node, TArray<FPathNode
 
     if (Node->LinkedActor && Node->LinkedActor->TargetPoint)
     {
-        FPathNode* TargetLinkNode = GetNodeFromWorldLocation(Node->LinkedActor->TargetPoint->GetActorLocation());
-        if (TargetLinkNode)
+        // NavigationManager
+        AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
+        if (NavManager)
         {
-            OutNeighbors.Add(TargetLinkNode);
+            FVector TargetLocation = Node->LinkedActor->TargetPoint->GetActorLocation();
+            
+            // ëª©í‘œ ì§€ì ì— ë§ëŠ” ë‹¤ë¥¸ GridManager íƒìƒ‰
+            AAStarGridManager* TargetManager = NavManager->GetManagerForLocation(TargetLocation);
+
+            if (TargetManager && TargetManager != this) // ë‹¤ë¥¸ ë§¤ë‹ˆì €ê°€ í™•ì‹¤í•˜ë‹¤ë©´
+            {
+                // ë‹¤ë¥¸ ë§¤ë‹ˆì €ì—ê²Œ ëª©í‘œ ìœ„ì¹˜ì˜ ë…¸ë“œë¥¼ ë‹¬ë¼ê³  ìš”ì²­
+                FPathNode* TargetLinkNode = TargetManager->GetNodeFromWorldLocation(TargetLocation);
+                if (TargetLinkNode)
+                {
+                    OutNeighbors.Add(TargetLinkNode);
+                }
+            }
         }
     }
 }
@@ -334,7 +344,7 @@ float AAStarGridManager::CalculateDistance(const FPathNode* A, const FPathNode* 
     int32 DstX = FMath::Abs(A->GridIndex.X - B->GridIndex.X);
     int32 DstY = FMath::Abs(A->GridIndex.Y - B->GridIndex.Y);
 
-    // Á÷¼± ÀÌµ¿ ºñ¿ë: 10, ´ë°¢¼± ÀÌµ¿ ºñ¿ë: 14
+    // ì§ì„  ì´ë™ ë¹„ìš©: 10, ëŒ€ê°ì„  ì´ë™ ë¹„ìš©: 14 (ë£¨íŠ¸2ì˜ ê·¼ì‚¬ì¹˜)
     if (DstX > DstY)
         return 14 * DstY + 10 * (DstX - DstY);
 
@@ -347,18 +357,20 @@ void AAStarGridManager::RetracePath(const FPathNode* StartNode, const FPathNode*
     const FPathNode* CurrentNode = EndNode;
 
     TArray<FVector> TempPath;
+    // ëª©í‘œ ë…¸ë“œë¶€í„° ë¶€ëª¨ ë…¸ë“œë¥¼ ë”°ë¼ê°€ë©° ê²½ë¡œ ì €ì¥
     while (CurrentNode != StartNode && CurrentNode != nullptr)
     {
         TempPath.Add(CurrentNode->WorldLocation);
         CurrentNode = CurrentNode->ParentNode;
     }
 
-    // °æ·Î ¿ª¼ø
-    Algo::Reverse(TempPath);
-    OutPath = TempPath;
+    Algo::Reverse(TempPath); // ì—­ìˆœìœ¼ë¡œ ì €ì¥ëœ ê²½ë¡œ ë’¤ì§‘ê¸°
 
-    TArray<FVector> RawPath = TempPath; // µÚÁıÈù °æ·Î ÀÓ½Ã ÀúÀå
-    SimplifyPath(RawPath, OutPath);
+    // SimplifyPathë¥¼ í˜¸ì¶œí•˜ê¸° ì „ì— ê²½ë¡œë¥¼ OutPathì— ë¨¼ì € ë³µì‚¬
+    OutPath = TempPath; 
+    
+    // ê²½ë¡œ í‰íƒ„í™” (SimplifyPathê°€ OutPathë¥¼ ì§ì ‘ ìˆ˜ì •í•˜ë„ë¡ í•¨)
+    // SimplifyPath(TempPath, OutPath);
 }
 
 void AAStarGridManager::SimplifyPath(const TArray<FVector>& InPath, TArray<FVector>& OutPath)
@@ -370,13 +382,13 @@ void AAStarGridManager::SimplifyPath(const TArray<FVector>& InPath, TArray<FVect
         return;
     }
 
-    OutPath.Add(InPath[0]); // ½ÃÀÛÁ¡ Ç×»ó Æ÷ÇÔ
+    OutPath.Add(InPath[0]); // ì‹œì‘ì ì€ í•­ìƒ í¬í•¨
     FVector LastDirection = (InPath[1] - InPath[0]).GetSafeNormal();
 
     for (int32 i = 1; i < InPath.Num() - 1; ++i)
     {
         FVector CurrentDirection = (InPath[i + 1] - InPath[i]).GetSafeNormal();
-        // ÀÌÀü ¹æÇâ°ú ÇöÀç ¹æÇâÀÌ ´Ù¸£¸é, ÇØ´ç ÁöÁ¡Àº ÄÚ³ÊÀÌ¹Ç·Î °æ·Î Ãß°¡
+        // ì´ì „ ë°©í–¥ê³¼ í˜„ì¬ ë°©í–¥ì´ ë‹¤ë¥´ë©´ ì½”ë„ˆë¡œ ê°„ì£¼í•˜ê³  ê²½ë¡œì— ì¶”ê°€
         if (!LastDirection.Equals(CurrentDirection, 0.1f))
         {
             OutPath.Add(InPath[i]);
@@ -384,6 +396,5 @@ void AAStarGridManager::SimplifyPath(const TArray<FVector>& InPath, TArray<FVect
         LastDirection = CurrentDirection;
     }
 
-    OutPath.Add(InPath.Last()); // ³¡Á¡¤¤ Ç×»ó Æ÷ÇÔ
+    OutPath.Add(InPath.Last()); // ëì ì€ í•­ìƒ í¬í•¨
 }
-

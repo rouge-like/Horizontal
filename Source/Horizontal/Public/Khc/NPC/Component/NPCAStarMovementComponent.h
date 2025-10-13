@@ -29,8 +29,11 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
+	//UPROPERTY()
+	//class AAStarGridManager* GridManager;
+
 	UPROPERTY()
-	class AAStarGridManager* GridManager;
+	class AAStarNavigationManager* NavigationManager;
 
 	// 계산된 경로를 저장할 배열
 	TArray<FVector> CurrentPath;
