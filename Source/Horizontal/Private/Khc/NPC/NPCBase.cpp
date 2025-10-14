@@ -10,6 +10,7 @@
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 
 ANPCBase::ANPCBase()
@@ -29,42 +30,18 @@ void ANPCBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (InteractionComp)
-	{
-		InteractionComp->OnPlayerDetected.AddDynamic(this, &ANPCBase::OnPlayerDetected);
-	}
-
 	if (InteractionUI)
 		InteractionUI->SetVisibility(false);
 }
 
-void ANPCBase::OnPlayerDetected(AActor* DetectedPlayer)
-{
-	if (!HasAuthority()) return;
-
-	// FSMComp가 유효한지 여기서 직접 확인하고 상태 변경을 지시합니다.
-	if (FSMComp && FSMComp->GetState() == ENPCState::Wait)
-	{
-		FSMComp->SetState(ENPCState::Move);
-		UE_LOG(LogTemp, Warning, TEXT("Server: State change to Move requested."));
-	}
-}
-
-void ANPCBase::Server_RequestInteraction_Implementation()
-{
-}
-
-
 void ANPCBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	//BillboardUI();
 }
 
-// void ANPCBase::BillboardUI()
-// {
-// 	AActor* cam = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
-// 	FRotator rot = UKismetMathLibrary::MakeRotFromXZ(-cam->GetActorForwardVector(), cam->GetActorUpVector());
-//
-// 	InteractionUI->SetWorldRotation(rot);
-// }
+void ANPCBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANPCBase, bHasBeenInteractedWith);
+}

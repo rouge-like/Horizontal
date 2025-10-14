@@ -29,8 +29,8 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
-	UFUNCTION(Client, Reliable)
-	void Client_SetInteractableTarget(UNPCInteractionComponent* NewTarget);
+	// UFUNCTION(Client, Reliable)
+	// void Client_SetInteractableTarget(UNPCInteractionComponent* NewTarget);
 
 protected:
 	// 'E' 키를 눌렀을 때 클라이언트에서 실행될 함수
@@ -46,8 +46,8 @@ private:
 	float InteractionDistance = 300.0f;
 
 	// 현재 상호작용 가능한 NPC 컴포넌트 (서버가 지정해 줌)
-	UPROPERTY()
-	TWeakObjectPtr<UNPCInteractionComponent> CurrentInteractable;
+	// UPROPERTY()
+	// TWeakObjectPtr<UNPCInteractionComponent> CurrentInteractable;
 
 	// 현재 플레이어가 바라보고 있는 상호작용 대상 (매 틱마다 갱신)
 	UPROPERTY()

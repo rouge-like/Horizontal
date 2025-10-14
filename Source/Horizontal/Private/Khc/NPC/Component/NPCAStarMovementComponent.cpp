@@ -21,6 +21,11 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+    if (!GetOwner()->HasAuthority())
+    {
+        return;
+    }
+    
     if (bIsMoving)
     {
         // 1. 실제 목표 지점(SafetyZone)을 빨간색 구로 표시S

@@ -9,12 +9,16 @@
 #include "HorrorCharacter.h"
 #include "HorrorUI.h"
 #include "Horizontal.h"
+#include "Khc/Player/DialogueManagerComponent.h"
 #include "Widgets/Input/SVirtualJoystick.h"
 
 AHorrorPlayerController::AHorrorPlayerController()
 {
 	// set the player camera manager class
 	PlayerCameraManagerClass = AHorizontalCameraManager::StaticClass();
+
+	DialogueManagerComponent = CreateDefaultSubobject<UDialogueManagerComponent>(TEXT("DialogueManagerComponent"));
+
 }
 
 void AHorrorPlayerController::BeginPlay()

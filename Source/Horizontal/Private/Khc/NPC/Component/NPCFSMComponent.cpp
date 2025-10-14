@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Khc/NPC/Component/NPCAStarMovementComponent.h"
 #include "Khc/NPC/NPCBase.h"
+#include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -43,6 +44,8 @@ void UNPCFSMComponent::OnRep_CurrentState()
 
 void UNPCFSMComponent::OnMovementFinished()
 {
+	if (!GetOwner()->HasAuthority()) return;
+	
 	if (CurrentState == ENPCState::Move)
 	{
 		SetState(ENPCState::Idle);
@@ -76,8 +79,12 @@ void UNPCFSMComponent::SetState(ENPCState NewState)
 	CurrentState = NewState;
 	OnRep_CurrentState(); 
        
+
 	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
-	if (!OwnerPawn) return; // 주인이 없으면 아무것도 하지 않음
+	if (!OwnerPawn || !OwnerPawn->InteractionComp) return; // InteractionComp도 확인
+
+	// 상태가 변경될 때마다 InteractionComp의 상태도 함께 변경
+	OwnerPawn->InteractionComp->SetInteractable(CurrentState == ENPCState::Wait);
 	
 	switch (CurrentState)
 	{

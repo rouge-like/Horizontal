@@ -17,17 +17,15 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UFUNCTION()
-	void OnPlayerDetected(AActor* DetectedPlayer);
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestInteraction();
-	
 public:
 	virtual void Tick(float DeltaTime) override;
 
-	//void BillboardUI();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	UPROPERTY(Replicated)
+	bool bHasBeenInteractedWith;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
 	class UNPCFSMComponent* FSMComp;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")

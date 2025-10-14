@@ -10,7 +10,6 @@
 // Sets default values
 AAStarNavigationManager::AAStarNavigationManager()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
@@ -19,7 +18,6 @@ AAStarGridManager* AAStarNavigationManager::GetManagerForLocation(const FVector&
 	AAStarGridManager* BestManager = nullptr;
 	float MinZDistance = BIG_NUMBER;
 
-	// 모든 매니저를 순회하며 주어진 위치와 Z축 거리가 가장 가까운 매니저를 찾습니다.
 	for (AAStarGridManager* Manager : AllGridManagers)
 	{
 		if (Manager)
