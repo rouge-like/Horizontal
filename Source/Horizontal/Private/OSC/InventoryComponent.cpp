@@ -1,4 +1,4 @@
-#include "OSC/InventoryComponent.h"
+﻿#include "OSC/InventoryComponent.h"
 
 #include "EnhancedInputComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -16,7 +16,7 @@ UInventoryComponent::UInventoryComponent()
 void UInventoryComponent::InitializeComponent()
 {
     Super::InitializeComponent();
-
+    
     OwningPlayer = Cast<APlayerBase>(GetOwner());
     OwningPlayer->OnSetUpPlayerInputDelegate.AddDynamic(this, &UInventoryComponent::OnSetUpPlayerInput);
 
