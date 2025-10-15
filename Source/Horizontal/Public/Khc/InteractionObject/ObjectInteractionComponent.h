@@ -6,7 +6,16 @@
 #include "Components/ActorComponent.h"
 #include "ObjectInteractionComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteraction, ACharacter*, InteractingCharacter);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDetectedObject_Interaction, AActor*, InteractingCharacter);
+
+// 플레이어가 NPC와 상호작용하는 방식
+UENUM(BlueprintType)
+enum class EObjectInteractionType : uint8
+{
+	PickUp			UMETA(DisplayName = "Pick Up Object"),
+	Trigger			UMETA(DisplayName = "Button Object"),
+	Information		UMETA(DisplayName = "Information Object")
+};
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class HORIZONTAL_API UObjectInteractionComponent : public UActorComponent
@@ -24,25 +33,28 @@ public:
 	// 서버에서만 이 오브젝트의 상호작용 가능 상태를 변경하는 함수
 	void SetInteractable(bool bNewState);
 
-protected:
-	// UI 가시성 상태가 복제될 때 모든 클라이언트에서 호출될 함수
-	UFUNCTION()
-	void OnRep_IsInteractable();
+
 
 public:
 	// 플레이어가 상호작용을 시도할 때, 서버의 PlayerInteractionComponent가 호출할 함수
-	void InitiateInteraction(ACharacter* InteractingCharacter);
+	void InitiateInteraction(ACharacter* InteractingPlayer);
 
 	// 플레이어 감지를 위한 콜리전
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Component")
 	TObjectPtr<class USphereComponent> SphereComp;
 
+	UPROPERTY(EditAnywhere)
+	EObjectInteractionType InteractionType = EObjectInteractionType::Trigger;
+	
 	// 이 오브젝트와 상호작용 시 시작될 대사의 Label
 	UPROPERTY(EditAnywhere, Category = "Dialogue")
 	FName DialogueStartLabel;
 
+	UPROPERTY(BlueprintAssignable, Category="Interaction")
+	FOnPlayerDetectedObject_Interaction OnPlayerDetected;
+
 private:
 	// 서버에서만 변경되고, 모든 클라이언트로 복제되는 '상호작용 가능 여부' 상태 변수
-	UPROPERTY(ReplicatedUsing = OnRep_IsInteractable)
+	UPROPERTY(Replicated)
 	bool bIsInteractable = true;
 };

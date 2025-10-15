@@ -30,6 +30,7 @@ void UNPCInteractionComponent::SetInteractable(bool bNewState)
 
 void UNPCInteractionComponent::InitiateInteraction(ACharacter* InteractingPlayer)
 {
+	//
 	if (GetOwner()->HasAuthority())
 	{
 		ANPCBase* MyOwner = Cast<ANPCBase>(GetOwner());
@@ -44,17 +45,4 @@ void UNPCInteractionComponent::InitiateInteraction(ACharacter* InteractingPlayer
 			// TODO: 다른 InteractionType에 대한 처리 추가 (전략 패턴 사용)
 		}
 	}
-}
-
-
-void UNPCInteractionComponent::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-// Called every frame
-void UNPCInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                             FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }

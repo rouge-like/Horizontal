@@ -18,18 +18,30 @@ class HORIZONTAL_API UDialogueWidget : public UUserWidget
 public:
 	UFUNCTION(BlueprintCallable, Category = "Dialogue")
 	void UpdateDialogue(const FDialogueRow& DialogueData);
+	void UpdateSelectionDialogue(const FDialogueRow& DialogueData);
 	void SetDialogueManager(class UDialogueManagerComponent* InManager);
 
+	UFUNCTION(BlueprintCallable)
+	void OnChoiceButtonClicked(FName JumpToLabel);
+	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
-private:
+	UPROPERTY(EditAnywhere, Category = "Dialogue")
+	TSubclassOf<UUserWidget> ChoiceButtonClass;
+	
 	UPROPERTY()
 	TWeakObjectPtr<class UDialogueManagerComponent> DialogueManager;
+private:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* Text_Dialogue;
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* Text_DialogueSpeaker;
+
+	UPROPERTY(meta = (BindWidget))
+	class UVerticalBox* SelectionBox;
+
+	FDialogueRow CurrentDialogueData;
 };

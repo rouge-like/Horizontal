@@ -3,20 +3,50 @@
 
 #include "Khc/UI/DialogueWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBox.h"
 #include "Khc/Dialogue/DialogueDataTypes.h"
 #include "Khc/Player/DialogueManagerComponent.h"
+#include "Khc/UI/UChoiceButtonWidget.h"
 
 
 void UDialogueWidget::UpdateDialogue(const FDialogueRow& DialogueData)
 {
+	CurrentDialogueData = DialogueData;
+	if (SelectionBox)
+	{
+		SelectionBox->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	if (Text_DialogueSpeaker && Text_Dialogue)
 	{
-		// Speaker(FName)를 FText로 변환하여 TextBlock에 설정
 		Text_DialogueSpeaker->SetText(FText::FromName(DialogueData.Speaker));
-
-		// DialogueText(FText)를 TextBlock에 설정
 		Text_Dialogue->SetText(DialogueData.DialogueText);
 	}
+}
+
+void UDialogueWidget::UpdateSelectionDialogue(const FDialogueRow& DialogueData)
+{
+	CurrentDialogueData = DialogueData;
+	if (!SelectionBox || !ChoiceButtonClass) return;
+
+	SelectionBox->ClearChildren();
+	for (const FChoiceData& Choice : DialogueData.Choices)
+	{
+		// UUserWidget 대신 UChoiceButtonWidget으로 생성해야 합니다.
+		UUChoiceButtonWidget* ChoiceWidget = CreateWidget<UUChoiceButtonWidget>(this, ChoiceButtonClass);
+		if (ChoiceWidget)
+		{
+			// 버튼에 데이터와 부모 위젯(자기 자신) 정보를 넘겨줌
+			ChoiceWidget->SetupButton(Choice, this);
+			SelectionBox->AddChildToVerticalBox(ChoiceWidget);
+		}
+	}
+	if (Text_DialogueSpeaker && Text_Dialogue)
+	{
+		Text_DialogueSpeaker->SetText(FText::FromName(DialogueData.Speaker));
+		Text_Dialogue->SetText(DialogueData.DialogueText);
+	}
+	
+	SelectionBox->SetVisibility(ESlateVisibility::Visible);
 }
 
 void UDialogueWidget::SetDialogueManager(class UDialogueManagerComponent* InManager)
@@ -26,18 +56,33 @@ void UDialogueWidget::SetDialogueManager(class UDialogueManagerComponent* InMana
 
 FReply UDialogueWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+	// DialogueManager가 없으면 아무것도 하지 않음
+	if (!DialogueManager.IsValid())
+	{
+		return FReply::Unhandled();
+	}
+    
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		// DialogueManager가 유효하다면, 서버에 다음 대사를 요청
-		if (DialogueManager.IsValid())
+		// 현재 대사 타입이 '선택지'가 아닐 때만 다음 대사로 넘어갑니다.
+		if (CurrentDialogueData.DialogueType != EDialogueDataType::Choice)
 		{
-			DialogueManager->RequestAdvanceDialogue(); // 이 함수는 DialogueManager에 새로 만들 겁니다.
+			DialogueManager->RequestAdvanceDialogue();
 		}
         
-		// 입력을 처리했음을 시스템에 알림
+		// 어떤 경우든 클릭 입력을 여기서 '처리했음'으로 간주하여
+		// 클릭이 UI 뒤(게임 월드)로 넘어가지 않게 합니다.
 		return FReply::Handled();
 	}
 
 	return FReply::Unhandled();
+}
 
+void UDialogueWidget::OnChoiceButtonClicked(FName JumpToLabel)
+{
+	if (DialogueManager.IsValid())
+	{
+		// DialogueManager에게 선택된 JumpToLabel로 진행하라고 요청
+		DialogueManager->RequestAdvanceDialogueWithChoice(JumpToLabel);
+	}
 }

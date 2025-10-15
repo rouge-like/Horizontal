@@ -17,10 +17,13 @@ public:
 	UDialogueManagerComponent();
 
 	void RequestAdvanceDialogue();
+	void RequestAdvanceDialogueWithChoice(FName JumpToLabel);
 
 
 	// [서버 전용] 새로운 대화를 시작하는 함수
 	void StartDialogue(class UNPCInteractionComponent* TargetNPC, FName StartingLabel);
+	void StartObjectDialogue(class UObjectInteractionComponent* TargetObj, FName StartingLabel);
+	void ProcessDialogueRow(const FDialogueRow* Row);
 
 protected:
 	virtual void BeginPlay() override;
@@ -38,6 +41,9 @@ protected:
 	// [클라이언트] 대화 종료를 알리는 함수
 	UFUNCTION(Client, Reliable)
 	void Client_EndDialogue();
+
+	UFUNCTION(Server, Reliable)
+	void Server_ProcessChoice(FName JumpToLabel);
 
 private:
 	// 에디터에서 설정할 대사 데이터 테이블

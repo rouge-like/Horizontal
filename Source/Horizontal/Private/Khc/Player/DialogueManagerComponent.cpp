@@ -21,9 +21,30 @@ void UDialogueManagerComponent::RequestAdvanceDialogue()
 	}
 }
 
+void UDialogueManagerComponent::RequestAdvanceDialogueWithChoice(FName JumpToLabel)
+{
+	Server_ProcessChoice(JumpToLabel);
+}
+
 void UDialogueManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void UDialogueManagerComponent::Server_ProcessChoice_Implementation(FName JumpToLabel)
+{
+	CurrentDialogueLabel = JumpToLabel;
+    
+	FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
+	if (Row)
+	{
+		// 공통 로직 호출
+		ProcessDialogueRow(Row);
+	}
+	else
+	{
+		Client_EndDialogue();
+	}
 }
 
 void UDialogueManagerComponent::StartDialogue(class UNPCInteractionComponent* TargetNPC, FName StartingLabel)
@@ -40,6 +61,44 @@ void UDialogueManagerComponent::StartDialogue(class UNPCInteractionComponent* Ta
 		{
 			// 2. [서버 -> 클라이언트] 첫 대사 UI를 띄우라고 명령
 			Client_UpdateDialogueUI(*Row);
+		}
+	}
+}
+
+void UDialogueManagerComponent::StartObjectDialogue(class UObjectInteractionComponent* TargetObj, FName StartingLabel)
+{
+	if (!GetOwner()->HasAuthority()) return; // 서버 전용
+
+	CurrentInteractingNPC = nullptr;
+	CurrentDialogueLabel = StartingLabel;
+
+	if (DialogueTable && !CurrentDialogueLabel.IsNone())
+	{
+		FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
+		if (Row)
+		{
+			// 2. [서버 -> 클라이언트] 첫 대사 UI를 띄우라고 명령
+			Client_UpdateDialogueUI(*Row);
+		}
+	}
+}
+
+void UDialogueManagerComponent::ProcessDialogueRow(const FDialogueRow* Row)
+{
+	if (!Row) return;
+
+	Client_UpdateDialogueUI(*Row);
+
+	// 만약 다음 대사가 End 타입이라면, 서버에서 미리 게임 로직을 처리합니다.
+	if (Row->DialogueType == EDialogueDataType::End)
+	{
+		if (CurrentInteractingNPC.IsValid())
+		{
+			ANPCBase* NPC = Cast<ANPCBase>(CurrentInteractingNPC->GetOwner());
+			if (NPC && NPC->FSMComp)
+			{
+				NPC->FSMComp->SetState(ENPCState::Move);
+			}
 		}
 	}
 }
@@ -86,7 +145,7 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 		else // 일반 대사
 		{
 			// 6. [서버 -> 클라이언트] 다음 대사 UI를 업데이트하라고 명령
-			Client_UpdateDialogueUI(*Row);
+			ProcessDialogueRow(Row);
 		}
 	}
 	else
@@ -114,7 +173,17 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	if (DialogueWidgetInstance)
 	{
 		DialogueWidgetInstance->SetDialogueManager(this);
-		DialogueWidgetInstance->UpdateDialogue(DialogueData);
+		
+		switch (DialogueData.DialogueType)
+		{
+		case EDialogueDataType::Normal:
+		case EDialogueDataType::End:
+			DialogueWidgetInstance->UpdateDialogue(DialogueData);
+			break;
+		case EDialogueDataType::Choice:
+			DialogueWidgetInstance->UpdateSelectionDialogue(DialogueData);
+			break;
+		}
 	}
 }
 

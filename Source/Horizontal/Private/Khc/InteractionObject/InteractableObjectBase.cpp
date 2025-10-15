@@ -5,13 +5,15 @@
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
 #include "Components/StaticMeshComponent.h"
-
+#include "Net/UnrealNetwork.h"
 
 
 // Sets default values
 AInteractableObjectBase::AInteractableObjectBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	bReplicates = true;
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
@@ -30,14 +32,18 @@ AInteractableObjectBase::AInteractableObjectBase()
 	InteractionUI->SetVisibility(false); // 기본적으로 숨겨둠
 }
 
-// Called when the game starts or when spawned
+void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AInteractableObjectBase, bHasBeenInteractedWith);
+}
+
 void AInteractableObjectBase::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
-// Called every frame
 void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
