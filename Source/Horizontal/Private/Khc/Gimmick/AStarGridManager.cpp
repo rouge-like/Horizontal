@@ -142,14 +142,14 @@ void AAStarGridManager::BlurObstaclePenalties(int32 BlurSize)
        }
     }
 }
-
-void AAStarGridManager::UpdateNodesInBounds(const FBox& BoundsToUpdate)
-{
-    CreateGrid();
-}
+//
+// void AAStarGridManager::UpdateNodesInBounds(const FBox& BoundsToUpdate)
+// {
+// }
 
 void AAStarGridManager::RebuildGrid()
 {
+    CreateGrid();
 }
 
 void AAStarGridManager::BeginPlay()
@@ -157,17 +157,17 @@ void AAStarGridManager::BeginPlay()
     Super::BeginPlay();
     CreateGrid();
 
-    TArray<AActor*> FoundObstacles;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInteractableObstacleObjectBase::StaticClass(), FoundObstacles);
-    for (AActor* Actor : FoundObstacles)
-    {
-        AInteractableObstacleObjectBase* Obstacle = Cast<AInteractableObstacleObjectBase>(Actor);
-        if (Obstacle)
-        {
-            // 장애물의 상태가 바뀔 때마다 UpdateNodesInBounds 함수를 호출하도록 연결(바인딩)합니다.
-            Obstacle->OnStateChanged.AddDynamic(this, &AAStarGridManager::UpdateNodesInBounds);
-        }
-    }
+    // TArray<AActor*> FoundObstacles;
+    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInteractableObstacleObjectBase::StaticClass(), FoundObstacles);
+    // for (AActor* Actor : FoundObstacles)
+    // {
+    //     AInteractableObstacleObjectBase* Obstacle = Cast<AInteractableObstacleObjectBase>(Actor);
+    //     if (Obstacle)
+    //     {
+    //         // 장애물의 상태가 바뀔 때마다 UpdateNodesInBounds 함수를 호출하도록 연결(바인딩)합니다.
+    //         Obstacle->OnStateChanged.AddDynamic(this, &AAStarGridManager::UpdateNodesInBounds);
+    //     }
+    // }
 }
 
 void AAStarGridManager::Tick(float DeltaTime)

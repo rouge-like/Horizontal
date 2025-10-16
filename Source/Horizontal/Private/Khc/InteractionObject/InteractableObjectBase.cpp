@@ -7,6 +7,7 @@
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Khc/Player/DialogueManagerComponent.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -46,6 +47,65 @@ void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 void AInteractableObjectBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		// 월드에 있는 모든 플레이어 컨트롤러를 찾아서
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			APlayerController* PC = It->Get();
+			if (PC)
+			{
+				// 각 컨트롤러의 DialogueManager를 찾아 OnDialogueEvent 델리게이트를 구독(연결)
+				UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
+				if (DialogueManager)
+				{
+					DialogueManager->OnDialogueEvent.AddDynamic(this, &AInteractableObjectBase::OnDialogueEventReceived);
+				}
+			}
+		}
+	}
+}
+
+void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* InteractableActor)
+{
+	if (InteractableActor != this)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("'%s' received EventTag: %s"), *GetName(), *EventTag.ToString());
+
+	// --- 여기서 요청하신 규칙을 구현합니다 ---
+    
+	// 1. Obstruction 일때 EndGood -> 파괴
+	if (EventTag == "DestroyObstacle")
+	{
+		Destroy();
+	}
+	// 2. Obstruction 일때 EndBad -> 다시 상호작용 가능
+	else if (EventTag == "ResetInteraction")
+	{
+		if (InteractionComponent)
+		{
+			InteractionComponent->SetInteractable(true);
+		}
+	}
+	// 3 & 4. Trigger 일때 EndGood/EndBad -> 상호작용 불가능 상태 유지
+	else if (EventTag == "DeactivateTrigger")
+	{
+		// PlayerInteractionComponent에서 SetInteractable(false)로 이미 잠갔으므로,
+		// 여기서는 특별한 행동이 필요 없습니다. 만약 문을 열거나 하는 추가 행동이 필요하다면 여기에 구현합니다.
+		UE_LOG(LogTemp, Log, TEXT("Trigger '%s' has been deactivated."), *GetName());
+	}
+	// 5. Information 타입은 대화 종료 후 즉시 다시 상호작용 가능
+	else if (EventTag == "InfoReset")
+	{
+		if (InteractionComponent)
+		{
+			InteractionComponent->SetInteractable(true);
+		}
+	}
 }
 
 void AInteractableObjectBase::Tick(float DeltaTime)

@@ -101,8 +101,8 @@ public:
 
     const TArray<FPathNode>& GetGrid() const { return Grid; }
 
-    UFUNCTION()
-    void UpdateNodesInBounds(const FBox& BoundsToUpdate);
+    //UFUNCTION()
+    //void UpdateNodesInBounds(const FBox& BoundsToUpdate);
 
     UFUNCTION(BlueprintCallable, Category = "A* Grid")
     void RebuildGrid();

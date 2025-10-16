@@ -13,7 +13,6 @@
 UNPCFSMComponent::UNPCFSMComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-
 }
 
 
@@ -21,8 +20,6 @@ void UNPCFSMComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	
-
 	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
 	if (OwnerPawn && OwnerPawn->AStarMovementComp)
 	{
