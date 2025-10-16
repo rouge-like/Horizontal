@@ -8,41 +8,23 @@
 
 UNPCInteractionComponent::UNPCInteractionComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-
-	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
+	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
-}
-
-void UNPCInteractionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(UNPCInteractionComponent, bIsInteractable);
-}
-
-void UNPCInteractionComponent::SetInteractable(bool bNewState)
-{
-	if (GetOwner()->HasAuthority())
-	{
-		bIsInteractable = bNewState;
-	}
 }
 
 void UNPCInteractionComponent::InitiateInteraction(ACharacter* InteractingPlayer)
 {
-	//
-	if (GetOwner()->HasAuthority())
+	Super::InitiateInteraction(InteractingPlayer);
+
+	// 부모 로직이 통과되었다는 것은, 이미 상호작용이 가능하고 서버라는 의미.
+	// 여기서는 NPC 고유의 추가 조건(FSM 상태)만 검사.
+	ANPCBase* MyOwner = Cast<ANPCBase>(GetOwner());
+	if (MyOwner && MyOwner->FSMComp && MyOwner->FSMComp->GetState() == ENPCState::Wait)
 	{
-		ANPCBase* MyOwner = Cast<ANPCBase>(GetOwner());
-		if (MyOwner && MyOwner->FSMComp && MyOwner->FSMComp->GetState() == ENPCState::Wait)
+		if (InteractionType == EInteractionType::InformSituation)
 		{
-			// InformSituation 타입의 상호작용 처리
-			if (InteractionType == EInteractionType::InformSituation)
-			{
-				// OnPlayerDetected 델리게이트를 호출하여 NPCBase가 상태를 변경하도록 신호를 보냄
-				OnPlayerDetected.Broadcast(InteractingPlayer);
-			}
-			// TODO: 다른 InteractionType에 대한 처리 추가 (전략 패턴 사용)
+			// 실제 로직 실행. OnInteraction 델리게이트는 이미 부모가 호출했음.
+			// (예: FSM 상태 변경 등)
 		}
 	}
 }

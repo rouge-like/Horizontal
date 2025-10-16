@@ -13,33 +13,26 @@
 // Sets default values for this component's properties
 UObjectInteractionComponent::UObjectInteractionComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false; // Tick은 필요 없음
+	PrimaryComponentTick.bCanEverTick = false;
 
-	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
+	//SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
 	SetIsReplicatedByDefault(true);
 }
 
-void UObjectInteractionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UObjectInteractionComponent::InitiateInteraction(ACharacter* InteractingCharacter)
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(UObjectInteractionComponent, bIsInteractable);
+	Super::InitiateInteraction(InteractingCharacter);
 
-	
-}
+	Super::InitiateInteraction(InteractingCharacter);
 
-void UObjectInteractionComponent::InitiateInteraction(ACharacter* InteractingPlayer)
-{
-	if (GetOwner()->HasAuthority())
+	// 부모 로직 통과 후, 오브젝트 고유의 추가 로직 실행
+	if (IsInteractable())
 	{
-		OnPlayerDetected.Broadcast(InteractingPlayer);
-	}
-}
-
-void UObjectInteractionComponent::SetInteractable(bool bNewState)
-{
-	if (GetOwner()->HasAuthority())
-	{
-		bIsInteractable = bNewState;
+		// 정보(Information) 타입이 아닐 경우, 한 번 상호작용하면 바로 잠금
+		if (InteractionType != EObjectInteractionType::Information)
+		{
+			SetInteractable(false);
+		}
 	}
 }
 

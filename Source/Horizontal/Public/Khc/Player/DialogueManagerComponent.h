@@ -8,6 +8,7 @@
 #include "Khc/UI/DialogueWidget.h"
 #include "DialogueManagerComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueEvent, FName, EventTag, AActor*, InteractableActor);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class HORIZONTAL_API UDialogueManagerComponent : public UActorComponent
@@ -21,9 +22,10 @@ public:
 
 
 	// [서버 전용] 새로운 대화를 시작하는 함수
-	void StartDialogue(class UNPCInteractionComponent* TargetNPC, FName StartingLabel);
-	void StartObjectDialogue(class UObjectInteractionComponent* TargetObj, FName StartingLabel);
-	void ProcessDialogueRow(const FDialogueRow* Row);
+	void StartDialogue(class UInteractableComponentBase* TargetComp, FName StartingLabel);
+	void HandleDialogueEnd(const FDialogueRow* DialogueRow);
+
+	FOnDialogueEvent OnDialogueEvent;
 
 protected:
 	virtual void BeginPlay() override;
@@ -59,8 +61,7 @@ private:
 	FName CurrentDialogueLabel;
 
 	UPROPERTY()
-	TWeakObjectPtr<UNPCInteractionComponent> CurrentInteractingNPC;
-
+	TWeakObjectPtr<UInteractableComponentBase> CurrentInteractableComponent;
 	// ---- 클라이언트에서만 존재하는 변수들 ----
 	UPROPERTY()
 	TObjectPtr<UDialogueWidget> DialogueWidgetInstance;

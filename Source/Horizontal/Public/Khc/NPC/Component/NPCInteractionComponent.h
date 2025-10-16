@@ -1,10 +1,8 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Khc/InteractableComponentBase.h"
 #include "NPCInteractionComponent.generated.h"
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDetected_Interaction, AActor*, DetectedPlayer);
 
 // 플레이어가 NPC와 상호작용하는 방식
 UENUM(BlueprintType)
@@ -17,40 +15,20 @@ enum class EInteractionType : uint8
 
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class HORIZONTAL_API UNPCInteractionComponent : public UActorComponent
+class HORIZONTAL_API UNPCInteractionComponent : public UInteractableComponentBase
 {
 	GENERATED_BODY()
 
 public:
 	UNPCInteractionComponent();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	bool IsInteractable() const { return bIsInteractable; }
-    
-	// 서버에서만 이 상태를 변경할 수 있도록 함수 추가
-	void SetInteractable(bool bNewState);
-	void InitiateInteraction(ACharacter* InteractingPlayer);
-	
-private:
-	// 서버에서만 변경되고, 모든 클라이언트로 복제되는 변수
-	UPROPERTY(Replicated)
-	bool bIsInteractable = true;
+	virtual void InitiateInteraction(ACharacter* InteractingPlayer) override;
 
 public:
-	
-	UPROPERTY(VisibleAnywhere, Category="Component")
-	class USphereComponent* SphereComp;
-
+	// NPC에만 필요한 고유 속성들
 	UPROPERTY(EditAnywhere)
 	EInteractionType InteractionType = EInteractionType::InformSituation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	class UAnimMontage* StartAnimation;
-
-	UPROPERTY(BlueprintAssignable, Category="Interaction")
-	FOnPlayerDetected_Interaction OnPlayerDetected;
-	
-	UPROPERTY(EditAnywhere, Category = "Dialogue")
-	FName DialogueStartLabel;
 };

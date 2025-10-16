@@ -101,6 +101,13 @@ public:
 
     const TArray<FPathNode>& GetGrid() const { return Grid; }
 
+    UFUNCTION()
+    void UpdateNodesInBounds(const FBox& BoundsToUpdate);
+
+    UFUNCTION(BlueprintCallable, Category = "A* Grid")
+    void RebuildGrid();
+
+
 protected:
     // 게임 시작 시 호출, CreateGrid()를 실행하여 길찾기 지도 생성
     virtual void BeginPlay() override;

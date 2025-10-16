@@ -2,6 +2,8 @@
 
 
 #include "Khc/InteractionObject/InteractableObjectBase.h"
+
+#include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -24,6 +26,8 @@ AInteractableObjectBase::AInteractableObjectBase()
 
 	// 2. 상호작용 컴포넌트 생성 (논리적인 컴포넌트라 Attachment 불필요)
 	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
+	InteractionComponent->SphereComp->SetupAttachment(RootComponent);
+	InteractionComponent->SphereComp->SetSphereRadius(100.f);
 
 	// 3. UI 위젯 컴포넌트 생성 및 설정
 	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));

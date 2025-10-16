@@ -39,24 +39,23 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!OwnerCharacter || !OwnerCharacter->IsLocallyControlled()) return; // 로컬 플레이어가 아니면 실행 안함
+	if (!OwnerCharacter || !OwnerCharacter->IsLocallyControlled()) return;
 
+	// 이전에 조준했던 대상의 UI를 먼저 끕니다.
 	if (FocusedInteractable.IsValid())
 	{
-		if (ANPCBase* OldNPC = Cast<ANPCBase>(FocusedInteractable->GetOwner()))
+		// 이제 어떤 액터든 상관없이 WidgetComponent를 찾아서 끕니다.
+		if (UWidgetComponent* InteractionUI = FocusedInteractable->GetOwner()->FindComponentByClass<UWidgetComponent>())
 		{
-			if (OldNPC->InteractionUI) OldNPC->InteractionUI->SetVisibility(false);
-		}
-		if (AInteractableObjectBase* OldObject = Cast<AInteractableObjectBase>(FocusedInteractable->GetOwner()))
-		{
-			if (OldObject->InteractionUI) OldObject->InteractionUI->SetVisibility(false);
+			InteractionUI->SetVisibility(false);
 		}
 	}
-	
-	// 카메라 시점에서 라인 트레이스 발사
+	FocusedInteractable = nullptr;
+    
 	APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
 	if (!PC) return;
 
+	// 라인트레이스
 	FVector CamLoc;
 	FRotator CamRot;
 	PC->GetPlayerViewPoint(CamLoc, CamRot);
@@ -69,109 +68,51 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, QueryParams))
 	{
-		// 부딪힌 액터에서 NPCInteractionComponent를 찾습니다.
-		if (UNPCInteractionComponent* FoundComp = HitResult.GetActor()->FindComponentByClass<UNPCInteractionComponent>())
-		{
-			if (FoundComp && FoundComp->IsInteractable())
-			{
-				// 찾았다면, 조준 대상으로 설정하고 해당 NPC의 UI를 켭니다.
-				FocusedInteractable = FoundComp;
-				if (ANPCBase* NewNPC = Cast<ANPCBase>(FocusedInteractable->GetOwner()))
-				{
-					if (NewNPC->InteractionUI) NewNPC->InteractionUI->SetVisibility(true);
-				}
-				return;
-			}
-		}
-		else if (UObjectInteractionComponent* FoundObjComp = HitResult.GetActor()->FindComponentByClass<UObjectInteractionComponent>())
-		{
-			if (FoundObjComp && FoundObjComp->IsInteractable())
-			{
-				// 찾았다면, 조준 대상으로 설정하고 해당 NPC의 UI를 켭니다.
-				FocusedInteractable = FoundObjComp;
-				if (AInteractableObjectBase* NewObj = Cast<AInteractableObjectBase>(FocusedInteractable->GetOwner()))
-				{
-					if (NewObj->InteractionUI) NewObj->InteractionUI->SetVisibility(true);
-				}
-				return;
-			}
-		}
+		UInteractableComponentBase* FoundComp = HitResult.GetActor()->FindComponentByClass<UInteractableComponentBase>();
 
+		if (FoundComp && FoundComp->IsInteractable())
+		{
+			FocusedInteractable = FoundComp;
+			// 해당 액터의 WidgetComponent를 찾아서 UI를 켭니다.
+			if (UWidgetComponent* InteractionUI = FoundComp->GetOwner()->FindComponentByClass<UWidgetComponent>())
+			{
+				InteractionUI->SetVisibility(true);
+			}
+		}
 	}
-	
-	// 아무것도 맞지 않았거나, 다른 것을 보고 있다면 조준 해제
-	FocusedInteractable = nullptr;
 }
 
 void UPlayerInteractionComponent::OnInteractPressed()
 {
 	if (FocusedInteractable.IsValid())
 	{
-		if (UNPCInteractionComponent* comp = Cast<UNPCInteractionComponent>(FocusedInteractable.Get()))
-		{
-			Server_RequestInteraction(comp);
-		}
-		else if (UObjectInteractionComponent* ObjComp = Cast<UObjectInteractionComponent>(FocusedInteractable.Get()))
-		{
-			Server_RequestObjectInteraction(ObjComp);
-		}
-		
-		//Server_RequestInteraction(Cast<UNPCInteractionComponent>(FocusedInteractable.Get()));
-	}
-}
-
-void UPlayerInteractionComponent::Server_RequestObjectInteraction_Implementation(
-	UObjectInteractionComponent* TargetToInteractWith)
-{
-	if (TargetToInteractWith && OwnerCharacter )
-	{
-		if (TargetToInteractWith->IsInteractable())
-		{
-			TargetToInteractWith->SetInteractable(false);
-		}
-		else
-		{
-			return; // 이미 다른 사람이 상호작용 중이면 아무것도 하지 않음
-		}
-		
-		APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
-		if (PC)
-		{
-			// 자신의 컨트롤러에 있는 DialogueManager를 찾아 대화 시작을 요청
-			UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
-			if (DialogueManager)
-			{
-				FName StartLabel = TargetToInteractWith->DialogueStartLabel;
-				DialogueManager->StartObjectDialogue(TargetToInteractWith, StartLabel);
-			}
-		}
+		Server_RequestInteraction(FocusedInteractable.Get());
 	}
 }
 
 void UPlayerInteractionComponent::Server_RequestInteraction_Implementation(
-	UNPCInteractionComponent* TargetToInteractWith)
+	UInteractableComponentBase* TargetToInteractWith)
 {
-	if (TargetToInteractWith && OwnerCharacter )
+	if (TargetToInteractWith && OwnerCharacter)
 	{
+		// 상호작용 시작 전, 서버에서 다시 한번 가능 여부 확인 후 즉시 잠금
 		if (TargetToInteractWith->IsInteractable())
 		{
 			TargetToInteractWith->SetInteractable(false);
 		}
 		else
 		{
-			return; // 이미 다른 사람이 상호작용 중이면 아무것도 하지 않음
+			return; // 다른 사람이 먼저 상호작용 시작함
 		}
-		
+       
 		APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
 		if (PC)
 		{
-			// 자신의 컨트롤러에 있는 DialogueManager를 찾아 대화 시작을 요청
 			UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
 			if (DialogueManager)
 			{
-				//FName StartLabel = TargetToInteractWith->DialogueStartLabel;
-				FName StartLabel = "NPC01_1"; // 임시로 첫 대사 라벨 하드코딩
-				DialogueManager->StartDialogue(TargetToInteractWith, StartLabel);
+				// 어떤 타입의 컴포넌트든 상관없이 DialogueStartLabel을 가져와 대화 시작
+				DialogueManager->StartDialogue(TargetToInteractWith, TargetToInteractWith->DialogueStartLabel);
 			}
 		}
 	}

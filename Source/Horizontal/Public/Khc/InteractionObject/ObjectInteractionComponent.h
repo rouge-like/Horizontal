@@ -3,58 +3,27 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Khc/InteractableComponentBase.h"
 #include "ObjectInteractionComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDetectedObject_Interaction, AActor*, InteractingCharacter);
-
-// 플레이어가 NPC와 상호작용하는 방식
 UENUM(BlueprintType)
 enum class EObjectInteractionType : uint8
 {
-	PickUp			UMETA(DisplayName = "Pick Up Object"),
-	Trigger			UMETA(DisplayName = "Button Object"),
+	Obstruction		UMETA(DisplayName = "Obstruction Object"),
+	Trigger			UMETA(DisplayName = "Trigger Object"),
 	Information		UMETA(DisplayName = "Information Object")
 };
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
-class HORIZONTAL_API UObjectInteractionComponent : public UActorComponent
+class HORIZONTAL_API UObjectInteractionComponent : public UInteractableComponentBase
 {
 	GENERATED_BODY()
 
 public:
 	UObjectInteractionComponent();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	UFUNCTION(BlueprintPure, Category = "Interaction")
-	bool IsInteractable() const { return bIsInteractable; }
-    
-	// 서버에서만 이 오브젝트의 상호작용 가능 상태를 변경하는 함수
-	void SetInteractable(bool bNewState);
-
-
-
-public:
-	// 플레이어가 상호작용을 시도할 때, 서버의 PlayerInteractionComponent가 호출할 함수
-	void InitiateInteraction(ACharacter* InteractingPlayer);
-
-	// 플레이어 감지를 위한 콜리전
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Component")
-	TObjectPtr<class USphereComponent> SphereComp;
+	virtual void InitiateInteraction(ACharacter* InteractingCharacter) override;
 
 	UPROPERTY(EditAnywhere)
 	EObjectInteractionType InteractionType = EObjectInteractionType::Trigger;
-	
-	// 이 오브젝트와 상호작용 시 시작될 대사의 Label
-	UPROPERTY(EditAnywhere, Category = "Dialogue")
-	FName DialogueStartLabel;
-
-	UPROPERTY(BlueprintAssignable, Category="Interaction")
-	FOnPlayerDetectedObject_Interaction OnPlayerDetected;
-
-private:
-	// 서버에서만 변경되고, 모든 클라이언트로 복제되는 '상호작용 가능 여부' 상태 변수
-	UPROPERTY(Replicated)
-	bool bIsInteractable = true;
 };

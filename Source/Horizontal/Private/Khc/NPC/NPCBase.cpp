@@ -19,9 +19,14 @@ ANPCBase::ANPCBase()
 
 	FSMComp           = CreateDefaultSubobject<UNPCFSMComponent>(TEXT("FSMComp"));  
 	AStarMovementComp = CreateDefaultSubobject<UNPCAStarMovementComponent>(TEXT("AStarMoveComp"));
-	InteractionComp   = CreateDefaultSubobject<UNPCInteractionComponent>(TEXT("InteractionComp"));
-	InteractionComp->SphereComp->SetSphereRadius(100.f);
-	InteractionComp->SphereComp->SetupAttachment(RootComponent);
+	
+	InteractionComp = CreateDefaultSubobject<UNPCInteractionComponent>(TEXT("InteractionComp"));
+	if (InteractionComp && InteractionComp->SphereComp)
+	{
+		InteractionComp->SphereComp->SetupAttachment(RootComponent);
+		InteractionComp->SphereComp->SetSphereRadius(100.f);
+	}
+	
 	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
 	InteractionUI->SetupAttachment(RootComponent);
 }

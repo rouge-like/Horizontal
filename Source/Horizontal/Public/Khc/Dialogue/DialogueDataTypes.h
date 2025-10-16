@@ -10,9 +10,11 @@
 UENUM(BlueprintType)
 enum class EDialogueDataType : uint8
 {
-	Normal      UMETA(DisplayName = "Normal Dialogue"), // 다음 대사로 바로 이어지는 일반 대사
-	Choice      UMETA(DisplayName = "Choice Dialogue"), // 플레이어의 선택이 필요한 대사 (미래 확장용)
-	End         UMETA(DisplayName = "End Dialogue")     // 이 대화를 끝으로 대화창을 닫음
+	Normal      UMETA(DisplayName = "Normal Dialogue"), 	 // 다음 대사로 바로 이어지는 일반 대사
+	Choice      UMETA(DisplayName = "Choice Dialogue"), 	 // 플레이어의 선택이 필요한 대사 (미래 확장용)
+	End         UMETA(DisplayName = "End Dialogue"),    	 // 이 대화를 끝으로 대화창을 닫음
+	EndGood     UMETA(DisplayName = "Success End Dialogue"),    // 이 대화를 끝으로 대화창을 닫음, 성공 선택지
+	EndBad      UMETA(DisplayName = "Fail End Dialogue"),    // 이 대화를 끝으로 대화창을 닫음, 실패 선택지
 };
 
 USTRUCT(BlueprintType)
@@ -47,8 +49,11 @@ struct FDialogueRow : public FTableRowBase
 
 	// 대사의 종류 (Normal, Choice, End)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	EDialogueDataType DialogueType;
+	EDialogueDataType DialogueType = EDialogueDataType::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TArray<FChoiceData> Choices; 
+	TArray<FChoiceData> Choices;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName EventTag;
 };

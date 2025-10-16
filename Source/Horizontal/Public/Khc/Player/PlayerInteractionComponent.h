@@ -6,8 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "PlayerInteractionComponent.generated.h"
 
-class UObjectInteractionComponent;
-class UNPCInteractionComponent;
+class UInteractableComponentBase;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class HORIZONTAL_API UPlayerInteractionComponent : public UActorComponent
@@ -37,18 +36,15 @@ protected:
 
 	// [클라이언트가 호출] 서버에 상호작용을 실제로 요청하는 RPC
 	UFUNCTION(Server, Reliable)
-	void Server_RequestInteraction(UNPCInteractionComponent* TargetToInteractWith);
-	UFUNCTION(Server, Reliable)
-	void Server_RequestObjectInteraction(UObjectInteractionComponent* TargetToInteractWith);
+	void Server_RequestInteraction(UInteractableComponentBase* TargetToInteractWith);
 
 private:
 	// 상호작용 가능한 최대 거리
 	UPROPERTY(EditAnywhere, Category = "Interaction")
 	float InteractionDistance = 300.0f;
 
-	// 현재 플레이어가 바라보고 있는 상호작용 대상 (매 틱마다 갱신)
 	UPROPERTY()
-	TWeakObjectPtr<UActorComponent> FocusedInteractable;
+	TWeakObjectPtr<UInteractableComponentBase> FocusedInteractable;
     
 	UPROPERTY()
 	TObjectPtr<ACharacter> OwnerCharacter;

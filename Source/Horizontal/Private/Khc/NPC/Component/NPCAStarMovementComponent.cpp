@@ -1,9 +1,10 @@
 ﻿#include "Khc/NPC/Component/NPCAStarMovementComponent.h"
-#include "Khc/Gimmick/AStarGridManager.h"
 #include "Khc/Gimmick/AStarNavigationManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Pawn.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/KismetMathLibrary.h"
+
 
 UNPCAStarMovementComponent::UNPCAStarMovementComponent()
 {
@@ -45,38 +46,53 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
     }
 
     // --- 경로 따라가기 로직 ---
-    if (CurrentPath.IsValidIndex(CurrentPathIndex))
+    if (bIsMoving && CurrentPath.IsValidIndex(CurrentPathIndex))
     {
-        FVector Waypoint = CurrentPath[CurrentPathIndex];
-        FVector OwnerLocation = GetOwner()->GetActorLocation();
+        APawn* OwnerPawn = Cast<APawn>(GetOwner());
+        if (!OwnerPawn) return;
 
-        if (FVector::Dist2D(OwnerLocation, Waypoint) < 150.f)
+        FVector CurrentLocation = OwnerPawn->GetActorLocation();
+        FVector Waypoint = CurrentPath[CurrentPathIndex];
+
+        // 1. 도착 판정: 다음 경유지에 충분히 가까워졌는지 확인
+        if (FVector::Dist2D(CurrentLocation, Waypoint) < 150.f)
         {
             CurrentPathIndex++;
-        }
-        else
-        {
-            FVector Direction = (Waypoint - OwnerLocation).GetSafeNormal();
-            if (APawn* OwnerPawn = Cast<APawn>(GetOwner()))
+            // 경로의 마지막에 도달했는지 다시 한번 체크
+            if (!CurrentPath.IsValidIndex(CurrentPathIndex))
             {
-                OwnerPawn->AddMovementInput(Direction);
+                // 최종 목적지에 도착했는지 최종 확인
+                if (FVector::Dist2D(CurrentLocation, Destination) < 150.f)
+                {
+                    bIsMoving = false;
+                    OnMovementFinished.Broadcast();
+                }
+                return; // 이번 틱은 여기서 종료
             }
+            // 다음 웨이포인트로 목표 갱신
+            Waypoint = CurrentPath[CurrentPathIndex];
         }
+
+        // 2. 회전: 다음 경유지를 향해 부드럽게 몸을 돌림
+        FVector DirectionToWaypoint = (Waypoint - CurrentLocation).GetSafeNormal();
+        FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(CurrentLocation, Waypoint);
+        
+        // Z축 회전은 필요 없으므로 Yaw 값만 사용
+        FRotator CurrentRotation = OwnerPawn->GetActorRotation();
+        FRotator SmoothedRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 5.0f); // 5.0f는 회전 속도 (조절 가능)
+
+        OwnerPawn->SetActorRotation(FRotator(0.f, SmoothedRotation.Yaw, 0.f));
+        
+        // 3. 전진: 현재 캐릭터가 바라보는 '앞 방향'으로 이동 입력을 줌
+        OwnerPawn->AddMovementInput(OwnerPawn->GetActorForwardVector());
     }
-    else // 경로의 마지막 지점까지 모두 통과했을 때
+    else if(bIsMoving) // 경로가 끝났지만 아직 이동 중 플래그가 켜져 있다면
     {
-        // 도착 판정: 최종 목적지와의 실제 거리를 확인
-        if (FVector::Dist2D(GetOwner()->GetActorLocation(), Destination) < 50000.f)
-        {
-            bIsMoving = false; // 이동 중지
-            OnMovementFinished.Broadcast(); // 이동 완료 신호 방송
-        }
-        // 경로가 끝났는데도 목적지와 멀리 떨어져 있는 경우는
-        // 경로 자체가 잘못되었을 가능성이 높으므로, 일단 이동을 멈추고 로그
-        else
+        // 도착 판정 로직을 한 번 더 수행하여 이동을 확실히 끝냄
+        if (FVector::Dist2D(GetOwner()->GetActorLocation(), Destination) < 150.f)
         {
             bIsMoving = false;
-            UE_LOG(LogTemp, Warning, TEXT("Path finished, but far from final destination. Stopping movement."));
+            OnMovementFinished.Broadcast();
         }
     }
 }
