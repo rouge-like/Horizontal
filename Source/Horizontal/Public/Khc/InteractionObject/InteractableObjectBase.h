@@ -20,6 +20,8 @@ public:
 	UPROPERTY(Replicated)
 	bool bHasBeenInteractedWith;
 
+	void BindToPlayerController(APlayerController* PC);
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -30,7 +32,7 @@ protected:
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	
 	// 상호작용 가능 UI를 표시할 위젯 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UWidgetComponent> InteractionUI;

@@ -44,27 +44,22 @@ void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	DOREPLIFETIME(AInteractableObjectBase, bHasBeenInteractedWith);
 }
 
+void AInteractableObjectBase::BindToPlayerController(APlayerController* PC)
+{
+	if (PC)
+	{
+		UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
+		if (DialogueManager)
+		{
+			// 이 오브젝트의 OnDialogueEventReceived 함수를 해당 DialogueManager의 델리게이트에 연결합니다.
+			DialogueManager->OnDialogueEvent.AddDynamic(this, &AInteractableObjectBase::OnDialogueEventReceived);
+		}
+	}
+}
+
 void AInteractableObjectBase::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (HasAuthority())
-	{
-		// 월드에 있는 모든 플레이어 컨트롤러를 찾아서
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-		{
-			APlayerController* PC = It->Get();
-			if (PC)
-			{
-				// 각 컨트롤러의 DialogueManager를 찾아 OnDialogueEvent 델리게이트를 구독(연결)
-				UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
-				if (DialogueManager)
-				{
-					DialogueManager->OnDialogueEvent.AddDynamic(this, &AInteractableObjectBase::OnDialogueEventReceived);
-				}
-			}
-		}
-	}
 }
 
 void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* InteractableActor)
@@ -76,8 +71,6 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 
 	UE_LOG(LogTemp, Warning, TEXT("'%s' received EventTag: %s"), *GetName(), *EventTag.ToString());
 
-	// --- 여기서 요청하신 규칙을 구현합니다 ---
-    
 	// 1. Obstruction 일때 EndGood -> 파괴
 	if (EventTag == "DestroyObstacle")
 	{
@@ -112,4 +105,3 @@ void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }
-
