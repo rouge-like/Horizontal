@@ -3,6 +3,8 @@
 
 #include "Variant_Horror/HorrorGameMode.h"
 
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -14,6 +16,11 @@ AHorrorGameMode::AHorrorGameMode()
 void AHorrorGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void AHorrorGameMode::StartPlay()
+{
+	Super::StartPlay();
 	TArray<AActor*> FoundActors;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInteractableObjectBase::StaticClass(), FoundActors);
 	for(AActor* Actor : FoundActors)
@@ -21,6 +28,18 @@ void AHorrorGameMode::BeginPlay()
 		if(AInteractableObjectBase* Interactable = Cast<AInteractableObjectBase>(Actor))
 		{
 			AllInteractableObjectsInLevel.Add(Interactable);
+		}
+	}
+
+	for (APlayerState* PS : GetWorld()->GetGameState()->PlayerArray)
+	{
+		if (APlayerController* PC = PS->GetPlayerController())
+		{
+			for (AInteractableObjectBase* Interactable : AllInteractableObjectsInLevel)
+			{
+				Interactable->BindToPlayerController(PC);
+			}
+			UE_LOG(LogTemp, Log, TEXT("StartPlay: Bound events for existing player '%s'."), *PC->GetName());
 		}
 	}
 }
@@ -33,7 +52,6 @@ void AHorrorGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		if (Interactable)
 		{
-			// 각 오브젝트에게 "이 새로운 플레이어와 연결해!" 라고 명령합니다.
 			Interactable->BindToPlayerController(NewPlayer);
 		}
 	}

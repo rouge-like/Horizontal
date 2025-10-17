@@ -4,6 +4,7 @@
 #include "Khc/UI/DialogueWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Khc/Dialogue/DialogueDataTypes.h"
 #include "Khc/Player/DialogueManagerComponent.h"
 #include "Khc/UI/UChoiceButtonWidget.h"
@@ -37,7 +38,13 @@ void UDialogueWidget::UpdateSelectionDialogue(const FDialogueRow& DialogueData)
 		{
 			// 버튼에 데이터와 부모 위젯(자기 자신) 정보를 넘겨줌
 			ChoiceWidget->SetupButton(Choice, this);
-			SelectionBox->AddChildToVerticalBox(ChoiceWidget);
+
+			UVerticalBoxSlot* SelectionSlot = SelectionBox->AddChildToVerticalBox(ChoiceWidget);
+			if (SelectionSlot)
+			{
+				// 위아래로 5픽셀씩 여백을 줍니다. (값은 원하는 대로 조절 가능)
+				SelectionSlot->SetPadding(FMargin(0.f, 50.f));
+			}
 		}
 	}
 	if (Text_DialogueSpeaker && Text_Dialogue)
