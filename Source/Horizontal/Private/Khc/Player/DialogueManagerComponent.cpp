@@ -189,7 +189,8 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	{
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (!PC) return;
-
+		
+		PC->FlushPressedKeys();
 		if (ACharacter* PlayerCharacter = PC->GetCharacter())
 		{
 			PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
