@@ -186,7 +186,7 @@ void AAimableItemBase::OnRep_IsAiming(bool Previous)
 
     if (bIsAiming)
     {
-        LocalOwner->SetHandsState(EHandsState::Aiming);
+        LocalOwner->SetHandsState(HandsState);
     }
     else
     {
