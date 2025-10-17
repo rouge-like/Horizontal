@@ -67,6 +67,11 @@ protected:
 
     UPROPERTY(Transient)
     bool bIsEquipped = false;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|Equip")
+    FVector EquipLocation;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|Equip")
+    FRotator EquipRotation;
     
     virtual void HandleStartUse() {};
     virtual void HandleStopUse() {};

@@ -11,6 +11,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/Fire/FireManager.h"
+#include "OSC/VFX/VFXManager.h"
 
 AThrowingExtinguisher::AThrowingExtinguisher()
 {
@@ -43,6 +45,13 @@ AThrowingExtinguisher::AThrowingExtinguisher()
     TrajectorySpline = CreateDefaultSubobject<USplineComponent>(TEXT("TrajectorySpline"));
     TrajectorySpline->SetupAttachment(RootComponent);
     TrajectorySpline->SetMobility(EComponentMobility::Movable);
+
+    HitSphereComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HitSphereComponent"));
+    HitSphereComponent->SetupAttachment(CollisionComponent);
+    HitSphereComponent->SetIsReplicated(true);
+    HitSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    HitSphereComponent->SetSimulatePhysics(false);
+    HitSphereComponent->SetVisibility(false);
 }
 
 void AThrowingExtinguisher::BeginPlay()
@@ -81,6 +90,7 @@ void AThrowingExtinguisher::Tick(float DeltaTime)
                 Mesh->SetVisibility(false);
             }
         }
+        HitSphereComponent->SetVisibility(false);
     }
 }
 
@@ -95,7 +105,7 @@ void AThrowingExtinguisher::HandleStartUse()
 {
     Super::HandleStartUse();
 
-    if (!HasAuthority() || bInFlight)
+    if (!HasAuthority() || bInFlight || !bIsAiming)
     {
         return;
     }
@@ -270,7 +280,9 @@ void AThrowingExtinguisher::UpdateTrajectoryVisualization()
     const bool bHitSurface = UGameplayStatics::PredictProjectilePath(this, PredictParams, PredictResult);
     if (bHitSurface)
     {
-        DrawDebugSphere(GetWorld(), PredictResult.HitResult.Location, 120.f, 25, FColor::Green, false, 0.f);
+        HitSphereComponent->SetWorldLocation(PredictResult.HitResult.Location);
+        HitSphereComponent->SetVisibility(true);
+        //DrawDebugSphere(GetWorld(), PredictResult.HitResult.Location, 10.f, 25, FColor::Green, false, 0.f);
     }
     
     const int32 PathPointCount = PredictResult.PathData.Num();
@@ -303,14 +315,14 @@ void AThrowingExtinguisher::UpdateTrajectoryVisualization()
     const int32 SegmentCount = PathPointCount - 1;
     const int32 VisibleSegmentCount = FMath::Min(SegmentCount, ActiveSplineMeshes.Num());
 
-    for (int32 MeshIndex = 0; MeshIndex < ActiveSplineMeshes.Num(); ++MeshIndex)
+    for (int32 MeshIndex = 1; MeshIndex < ActiveSplineMeshes.Num(); ++MeshIndex)
     {
         USplineMeshComponent* Mesh = ActiveSplineMeshes[MeshIndex];
         if (!IsValid(Mesh))
         {
             continue;
         }
-
+ 
         if (MeshIndex < VisibleSegmentCount)
         {
             const FVector StartLocation = TrajectorySpline->GetLocationAtSplinePoint(MeshIndex, ESplineCoordinateSpace::Local);
@@ -333,7 +345,7 @@ void AThrowingExtinguisher::UpdateTrajectoryVisualization()
     // {
     //     const FVector& SegmentStart = PredictResult.PathData[Index].Location;
     //     const FVector& SegmentEnd = PredictResult.PathData[Index + 1].Location;
-    //     DrawDebugLine(GetWorld(), SegmentStart, SegmentEnd, DrawColor, false, TrajectoryLineLifetime, 0, 1.5f);
+    //     DrawDebugLine(GetWorld(), SegmentStart, SegmentEnd, DrawColor, false, 0, 0, 1.5f);
     // }
 }
 
@@ -384,8 +396,16 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
     }
     LastThrowingActor = nullptr;
 
+
+    AFireManager* FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFireManager::StaticClass()));
+    FireManager->ApplySuppressionInSphere(GetActorLocation(), HitRadius, 100);
+    
     HandlePickupAvailabilityChanged();
+
+    AVFXManager* VFXManager = Cast<AVFXManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AVFXManager::StaticClass()));
+    VFXManager->SpawnVFX(VFXName, GetActorLocation(), GetActorRotation(), FVector(HitRadius / 100.f));
 }
+
 
 void AThrowingExtinguisher::ClientHandleThrow_Implementation()
 {
