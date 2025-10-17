@@ -4,6 +4,7 @@
 #include "InputAction.h"
 #include "Net/UnrealNetwork.h"
 #include "CollisionShape.h"
+#include "NiagaraComponent.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"

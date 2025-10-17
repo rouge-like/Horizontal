@@ -10,23 +10,39 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
-#include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
 #include "CollisionQueryParams.h"
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
+#include "OSC/VFX/VFXManager.h"
+#include "OSC/VFX/VFXActor.h"
 
 
 AFireManager::AFireManager()
 {
     PrimaryActorTick.bCanEverTick = true;
-    bReplicates = false;
-    SetReplicates(false);
+    bReplicates = true;
+    SetReplicates(true);
 }
 
 void AFireManager::BeginPlay()
 {
     Super::BeginPlay();
+    ActiveFireVFXActors.Reset();
+
+    if (HasAuthority())
+    {
+        VFXManager = Cast<AVFXManager>(UGameplayStatics::GetActorOfClass(this, AVFXManager::StaticClass()));
+        if (VFXManager.IsValid())
+        {
+            for (const FName& VFXName : FireVFXs)
+            {
+                if (!VFXName.IsNone())
+                {
+                    VFXManager->InitPool(VFXName);
+                }
+            }
+        }
+    }
 
     if (!HasAuthority())
     {
@@ -62,65 +78,133 @@ void AFireManager::Tick(float DeltaSeconds)
         return;
     }
 
-    TArray<int32> BurningCells;
-    BurningCells.Reserve(Cells.Num());
-
-    for (int32 CellIndex = 0; CellIndex < Cells.Num(); ++CellIndex)
+    for (int32 RootIndex : RootCellIndices)
     {
-        if (!Cells.IsValidIndex(CellIndex))
+        if (!Cells.IsValidIndex(RootIndex))
         {
             continue;
         }
 
-        FFireCell& Cell = Cells[CellIndex];
-        if (!Cell.bIsLeaf)
-        {
-            continue;
-        }
+        ProcessCellRecursive(RootIndex, DeltaSeconds);
+    }
+}
 
-        if (Cell.CellExtent.IsNearlyZero())
-        {
-            continue;
-        }
+AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellIndex, float DeltaSeconds)
+{
+    FFireCellTickResult Result;
 
-        if (Cell.State == EFireCellState::Igniting)
+    if (!Cells.IsValidIndex(CellIndex))
+    {
+        return Result;
+    }
+
+    FFireCell& Cell = Cells[CellIndex];
+
+    if (!Cell.bIsLeaf)
+    {
+        bool bAllChildrenLeaf = true;
+        bool bAllChildrenExtinguishedOrDormant = true;
+        bool bAnyChildBurning = false;
+
+        for (int32 ChildIndex : Cell.ChildIndices)
         {
-            Cell.IgnitionTimeRemaining = FMath::Max(0.0f, Cell.IgnitionTimeRemaining - DeltaSeconds);
-            if (Cell.IgnitionTimeRemaining <= KINDA_SMALL_NUMBER)
+            if (ChildIndex == INDEX_NONE)
             {
-                Cell.State = EFireCellState::Burning;
-                Cell.Heat = DefaultHeatValue;
-                ActivateFireVFX(CellIndex);
+                continue;
+            }
+
+            FFireCellTickResult ChildResult = ProcessCellRecursive(ChildIndex, DeltaSeconds);
+            bAnyChildBurning |= ChildResult.bAnyBurning;
+
+            if (!Cells.IsValidIndex(ChildIndex))
+            {
+                bAllChildrenLeaf = false;
+                bAllChildrenExtinguishedOrDormant = false;
+                continue;
+            }
+
+            const FFireCell& ChildCell = Cells[ChildIndex];
+            if (!ChildCell.bIsLeaf)
+            {
+                bAllChildrenLeaf = false;
+                bAllChildrenExtinguishedOrDormant = false;
+                continue;
+            }
+
+            if (ChildCell.State != EFireCellState::Dormant && ChildCell.State != EFireCellState::Extinguished)
+            {
+                bAllChildrenExtinguishedOrDormant = false;
             }
         }
 
-        if (Cell.State == EFireCellState::Burning)
+        if (bAllChildrenLeaf && bAllChildrenExtinguishedOrDormant)
         {
-            BurningCells.Add(CellIndex);
-        }
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-        const FColor DebugColor = Cell.State == EFireCellState::Burning ? FColor::Red : (Cell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-        DrawDebugBox(GetWorld(), Cell.WorldCenter, Cell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
-#endif
-    }
-
-    for (int32 BurningIndex : BurningCells)
-    {
-        FFireCell& BurningCell = Cells[BurningIndex];
-        if (BurningCell.Heat > 0.0f)
-        {
-            SpreadFireFromCell(BurningIndex);
+            CollapseCell(CellIndex);
+            DeactivateFireVFX(CellIndex);
+            FFireCell& CollapsedCell = Cells[CellIndex];
+            CollapsedCell.State = EFireCellState::Extinguished;
+            CollapsedCell.Heat = 0.0f;
+            CollapsedCell.IgnitionTimeRemaining = 0.0f;
+            CollapsedCell.ActiveEffect = nullptr;
         }
         else
         {
-            BurningCell.Heat = 0.0f;
-            BurningCell.State = EFireCellState::Extinguished;
-            BurningCell.IgnitionTimeRemaining = 0.0f;
-            DeactivateFireVFX(BurningIndex);
-            TryCollapseParents(BurningIndex);
+            Result.bIsLeaf = false;
+            Result.bAnyBurning = bAnyChildBurning;
+            return Result;
         }
     }
+
+    FFireCell& LeafCell = Cells[CellIndex];
+
+    if (LeafCell.CellExtent.IsNearlyZero())
+    {
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+        const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
+        //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+#endif
+        Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
+        return Result;
+    }
+
+    if (LeafCell.State == EFireCellState::Igniting)
+    {
+        LeafCell.IgnitionTimeRemaining = FMath::Max(0.0f, LeafCell.IgnitionTimeRemaining - DeltaSeconds);
+        if (LeafCell.IgnitionTimeRemaining <= KINDA_SMALL_NUMBER)
+        {
+            LeafCell.State = EFireCellState::Burning;
+            LeafCell.Heat = DefaultHeatValue;
+            ActivateFireVFX(CellIndex);
+        }
+    }
+
+    if (LeafCell.State == EFireCellState::Burning)
+    {
+        if (LeafCell.Heat > 0.0f)
+        {
+            Result.bAnyBurning = true;
+            SpreadFireFromCell(CellIndex);
+        }
+        else
+        {
+            LeafCell.Heat = 0.0f;
+            LeafCell.State = EFireCellState::Extinguished;
+            LeafCell.IgnitionTimeRemaining = 0.0f;
+            DeactivateFireVFX(CellIndex);
+        }
+    }
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+    const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
+    //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+#endif
+
+    if (!Result.bAnyBurning)
+    {
+        Result.bAnyBurning = (LeafCell.State == EFireCellState::Burning || LeafCell.State == EFireCellState::Igniting)&& LeafCell.Heat > 0.0f;
+    }
+
+    return Result;
 }
 
 void AFireManager::GenerateCellsFromActor(AActor& SourceActor)
@@ -266,7 +350,7 @@ void AFireManager::CollapseCell(int32 CellIndex)
             ChildCell = FFireCell();        // 기본값으로 초기화                                                                 
             ChildCell.State = EFireCellState::Dormant;                                                                           
             ChildCell.CellExtent = FVector::ZeroVector;                                                                          
-            ChildCell.ParentIndex = INDEX_NONE;                                                                                  
+            ChildCell.ParentIndex = INDEX_NONE;                                                                    
             ChildCell.AttachedComponent = nullptr;                                                                               
             ChildCell.ActiveEffect = nullptr;
             ChildCell.bIsLeaf = false;
@@ -593,121 +677,90 @@ bool AFireManager::EnsureCombustibleComponent(int32 CellIndex)
 
 void AFireManager::ActivateFireVFX(int32 CellIndex)
 {
-    if (!FireNiagaraSystem || !Cells.IsValidIndex(CellIndex))
+    if (!HasAuthority())
+    {
+        return;
+    }
+
+    if (!Cells.IsValidIndex(CellIndex) || FireVFXs.Num() == 0)
     {
         return;
     }
 
     FFireCell& Cell = Cells[CellIndex];
-    if (Cell.ActiveEffect.IsValid())
-    {
-        return;
-    }
-
-    UWorld* World = GetWorld();
-    if (!World)
-    {
-        return;
-    }
-
     const FVector SpawnLocation = Cell.SurfacePoint.IsNearlyZero() ? Cell.WorldCenter : Cell.SurfacePoint;
     const FRotator SpawnRotation = Cell.SurfaceNormal.IsNearlyZero() ? FRotator::ZeroRotator : Cell.SurfaceNormal.Rotation();
+    const int32 EffectIndex = FMath::RandRange(0, FireVFXs.Num() - 1);
 
-    UNiagaraComponent* NiagaraComp = nullptr;
-
-    // if (UPrimitiveComponent* Primitive = Cell.AttachedComponent.Get())
-    // {
-    //     NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
-    //         FireNiagaraSystem,
-    //         Primitive,
-    //         NAME_None,
-    //         SpawnLocation - Primitive->GetComponentLocation(),
-    //         SpawnRotation,
-    //         EAttachLocation::KeepWorldPosition,
-    //         true);
-    // }
-    // else
+    if (!FireVFXs.IsValidIndex(EffectIndex))
     {
-        NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            World,
-            FireNiagaraSystem,
-            SpawnLocation,
-            SpawnRotation,
-            FVector::OneVector,
-            true);
+        return;
     }
 
-    if (NiagaraComp)
+    const float SpawnScale = 2.5f;
+
+    if (TWeakObjectPtr<AVFXActor>* ExistingPtr = ActiveFireVFXActors.Find(CellIndex))
     {
-        Cell.ActiveEffect = NiagaraComp;
+        if (AVFXActor* ExistingActor = ExistingPtr->Get())
+        {
+            if (VFXManager.IsValid())
+            {
+                VFXManager->DespawnVFX(ExistingActor);
+            }
+            else
+            {
+                ExistingActor->Destroy();
+            }
+        }
+
+        ActiveFireVFXActors.Remove(CellIndex);
     }
+
+    AVFXActor* SpawnedActor = nullptr;
+    const FName& VFXName = FireVFXs[EffectIndex];
+
+    if (!VFXName.IsNone() && VFXManager.IsValid())
+    {
+        SpawnedActor = VFXManager->SpawnVFX(VFXName, SpawnLocation, SpawnRotation, FVector(SpawnScale));
+    }
+
+    if (!IsValid(SpawnedActor))
+    {
+        return;
+    }
+
+    SpawnedActor->SetVFXName(VFXName);
+    ActiveFireVFXActors.Add(CellIndex, SpawnedActor);
+    Cell.ActiveEffect = SpawnedActor;
 }
 
 void AFireManager::DeactivateFireVFX(int32 CellIndex)
 {
-    if (!Cells.IsValidIndex(CellIndex))
+    if (!HasAuthority())
     {
         return;
     }
 
-    FFireCell& Cell = Cells[CellIndex];
-    if (UNiagaraComponent* Effect = Cell.ActiveEffect.Get())
+    if (TWeakObjectPtr<AVFXActor>* ExistingPtr = ActiveFireVFXActors.Find(CellIndex))
     {
-        Effect->DeactivateImmediate();
-        Effect->DestroyComponent();
-    }
-
-    Cell.ActiveEffect = nullptr;
-}
-
-void AFireManager::TryCollapseParents(int32 CellIndex)
-{
-    if (!Cells.IsValidIndex(CellIndex))
-    {
-        return;
-    }
-
-    int32 ParentIndex = Cells[CellIndex].ParentIndex;
-    while (Cells.IsValidIndex(ParentIndex))
-    {
-        FFireCell& ParentCell = Cells[ParentIndex];
-        if (ParentCell.bIsLeaf)
+        if (AVFXActor* ExistingActor = ExistingPtr->Get())
         {
-            ParentIndex = ParentCell.ParentIndex;
-            continue;
-        }
-
-        bool bHasLeafChildren = false;
-        bool bAllExtinguished = true;
-
-        for (int32 ChildIndex : ParentCell.ChildIndices)
-        {
-            if (ChildIndex == INDEX_NONE || !Cells.IsValidIndex(ChildIndex))
+            if (VFXManager.IsValid())
             {
-                continue;
+                VFXManager->DespawnVFX(ExistingActor);
             }
-
-            const FFireCell& ChildCell = Cells[ChildIndex];
-            bHasLeafChildren = true;
-
-            if (!ChildCell.bIsLeaf || (ChildCell.State != EFireCellState::Extinguished && ChildCell.State != EFireCellState::Dormant))
+            else
             {
-                bAllExtinguished = false;
-                break;
+                ExistingActor->Destroy();
             }
         }
 
-        if (!bHasLeafChildren || !bAllExtinguished)
-        {
-            break;
-        }
+        ActiveFireVFXActors.Remove(CellIndex);
+    }
 
-        CollapseCell(ParentIndex);
-        FFireCell& CollapsedParent = Cells[ParentIndex];
-        CollapsedParent.State = EFireCellState::Extinguished;
-        CollapsedParent.Heat = 0.0f;
-        CollapsedParent.IgnitionTimeRemaining = 0.0f;
-        ParentIndex = CollapsedParent.ParentIndex;
+    if (Cells.IsValidIndex(CellIndex))
+    {
+        Cells[CellIndex].ActiveEffect = nullptr;
     }
 }
 
@@ -800,7 +853,6 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
             Cell.State = EFireCellState::Extinguished;
             Cell.IgnitionTimeRemaining = 0.0f;
             DeactivateFireVFX(CellIndex);
-            TryCollapseParents(CellIndex);
         }
     }
     else if (Cell.State == EFireCellState::Igniting)
@@ -815,9 +867,9 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
             Cell.Heat = 0.0f;
             Cell.IgnitionTimeRemaining = 0.0f;
             DeactivateFireVFX(CellIndex);
-            TryCollapseParents(CellIndex);
         }
     }
 
     return bModified;
 }
+

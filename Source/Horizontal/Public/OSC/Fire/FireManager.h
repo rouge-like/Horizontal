@@ -5,9 +5,8 @@
 #include "FireManager.generated.h"
 
 class UPrimitiveComponent;
-class UNiagaraComponent;
-class UNiagaraSystem;
-
+class AVFXActor;
+class AVFXManager;
 UENUM(BlueprintType)
 enum class EFireCellState : uint8
 {
@@ -75,12 +74,12 @@ struct HORIZONTAL_API FFireCell
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FireCell")
     bool bIsLeaf;
-
+    
     UPROPERTY(Transient)
     TWeakObjectPtr<UPrimitiveComponent> AttachedComponent;
 
     UPROPERTY(Transient)
-    TWeakObjectPtr<UNiagaraComponent> ActiveEffect;
+    TWeakObjectPtr<AVFXActor> ActiveEffect;
 
     UPROPERTY(Transient)
     int32 ChildIndices[NumChildren];
@@ -104,11 +103,11 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
 
-public:
     UFUNCTION(BlueprintCallable, Category="Fire|Cells")
     int32 FindCellIndexAtLocation(const FVector& WorldLocation) const;
 
     void ApplySuppressionAtLocation(const FVector& WorldLocation, float SuppressionAmount);
+public:
     void ApplySuppressionInSphere(const FVector& Center, float Radius, float SuppressionAmount);
 
 protected:
@@ -134,7 +133,7 @@ protected:
     float AdjacentContactTolerance = 1.0f;
 
     UPROPERTY(EditDefaultsOnly, Category="Fire|VFX")
-    TObjectPtr<UNiagaraSystem> FireNiagaraSystem;
+    TArray<FName> FireVFXs;
 
     UPROPERTY(VisibleAnywhere, Category="Fire|Cells")
     TArray<FFireCell> Cells;
@@ -150,6 +149,12 @@ private:
     void SubdivideCell(int32 CellIndex);
     void CollapseCell(int32 CellIndex);
 
+    struct FFireCellTickResult
+    {
+        bool bIsLeaf = true;
+        bool bAnyBurning = false;
+    };
+
     void InitializeFireAreas();
 public:
     void IgniteSphere(const FVector& Center, float Radius);
@@ -159,16 +164,25 @@ private:
     void SpreadFireFromCell(int32 CellIndex);
     void SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, const FBox& SourceBounds);
 
+    FFireCellTickResult ProcessCellRecursive(int32 CellIndex, float DeltaSeconds);
+
     bool AreBoxesPotentiallyAdjacent(const FBox& SourceBounds, const FBox& TargetBounds) const;
     bool AreBoxesAdjacent(const FBox& SourceBounds, const FBox& TargetBounds) const;
 
     bool EnsureCombustibleComponent(int32 CellIndex);
+    
     void ActivateFireVFX(int32 CellIndex);
+
     void DeactivateFireVFX(int32 CellIndex);
-    void TryCollapseParents(int32 CellIndex);
 
     int32 FindCellIndexRecursive(int32 CellIndex, const FVector& WorldLocation) const;
 
     void ApplySuppressionInSphereRecursive(int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
     bool ApplySuppressionToCell(int32 CellIndex, float SuppressionAmount);
+
+    UPROPERTY(Transient)
+    TWeakObjectPtr<AVFXManager> VFXManager;
+
+    UPROPERTY(Transient)
+    TMap<int32, TWeakObjectPtr<AVFXActor>> ActiveFireVFXActors;
 };

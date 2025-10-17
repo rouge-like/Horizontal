@@ -147,7 +147,7 @@ void AAimableItemBase::OnUnequip()
 
     if (bIsAiming)
     {
-        HandleStopAim();
+        StopAim();
     }
 }
 
@@ -157,7 +157,7 @@ void AAimableItemBase::HandleStartAim()
 
     if (APlayerBase* LocalOwner = OwningPlayer.Get())
     {
-        LocalOwner->SetHandsState(EHandsState::Aiming);
+        LocalOwner->SetHandsState(HandsState);
     }
 }
 

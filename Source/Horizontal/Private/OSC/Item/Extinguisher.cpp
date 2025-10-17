@@ -1,6 +1,8 @@
 #include "OSC/Item/Extinguisher.h"
 
+#include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
@@ -13,11 +15,26 @@ AExtinguisher::AExtinguisher()
     bReplicates = true;
     AActor::SetReplicateMovement(true);
 
-    CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
+    CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
     SetRootComponent(CollisionComponent);
     CollisionComponent->SetIsReplicated(true);
     CollisionComponent->SetCollisionProfileName(TEXT("PhysicsActor"));
     CollisionComponent->SetSimulatePhysics(true);
+
+    Body = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Body"));
+    Body->SetupAttachment(CollisionComponent);
+    Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    
+    Hose = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Hose"));
+    Hose->SetupAttachment(CollisionComponent);
+    Hose->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    
+    HoseForAim = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ForAim"));
+    HoseForAim->SetupAttachment(CollisionComponent);
+    HoseForAim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    Spray = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Spray"));
+    Spray->SetupAttachment(CollisionComponent);
 }
 
 void AExtinguisher::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -37,12 +54,17 @@ void AExtinguisher::BeginPlay()
     {
         FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFireManager::StaticClass()));
     }
+
+    HoseForAim->SetVisibility(false);
+    Spray->SetVisibility(false);
 }
 
 void AExtinguisher::HandleStartUse()
 {
     Super::HandleStartUse();
 
+    if (!bIsAiming) return;
+    
     APlayerBase* Player = OwningPlayer.Get();
     if (!IsValid(Player))
     {
@@ -53,7 +75,7 @@ void AExtinguisher::HandleStartUse()
     {
         return;
     }
-
+    
     FVector StartLocation;
     FVector Direction;
     const bool bHasData = GatherUseData(StartLocation, Direction);
@@ -83,6 +105,11 @@ void AExtinguisher::HandleStartUse()
     {
         ServerUpdateSpray(CurrentSprayStart, CurrentSprayDirection);
     }
+    else
+    {
+        Spray->SetVisibility(true);
+        Spray->ResetSystem();
+    }
 
     bIsSpraying = true;
 }
@@ -95,6 +122,19 @@ void AExtinguisher::HandleStopUse()
     {
         bIsSpraying = false;
         SprayUpdateAccumulator = 0.0f;
+
+        Spray->Deactivate();
+    }
+}
+
+void AExtinguisher::HandleStartAim()
+{
+    Super::HandleStartAim();
+
+    if (HasAuthority())
+    {
+        Hose->SetVisibility(false);
+        HoseForAim->SetVisibility(true);
     }
 }
 
@@ -106,6 +146,9 @@ void AExtinguisher::HandleStopAim()
     {
         bIsSpraying = false;
         SprayUpdateAccumulator = 0.0f;
+
+        Hose->SetVisibility(true);
+        HoseForAim->SetVisibility(false);
     }
 }
 
@@ -211,15 +254,9 @@ void AExtinguisher::UpdateSpray(float DeltaTime)
 
     if (HasAuthority())
     {
-        UWorld* World = GetWorld();
-        if (!World)
-        {
-            return;
-        }
-
         if (!IsValid(FireManager))
         {
-            FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(World, AFireManager::StaticClass()));
+            FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFireManager::StaticClass()));
         }
 
         if (IsValid(FireManager))
@@ -240,22 +277,48 @@ void AExtinguisher::UpdateSpray(float DeltaTime)
                 QueryParams.AddIgnoredActor(this);
                 QueryParams.AddIgnoredActor(Player);
 
-                const bool bHit = World->LineTraceSingleByChannel(Hit, SprayStart, TraceEnd, ECC_Visibility, QueryParams);
+                const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, SprayStart, TraceEnd, ECC_Visibility, QueryParams);
                 const FVector ImpactPoint = bHit ? Hit.ImpactPoint : TraceEnd;
 
                 FireManager->ApplySuppressionInSphere(ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-                DrawDebugSphere(World, ImpactPoint, SuppressionRadius, 16, FColor::Yellow, false, 0, 0, 1.5f);
+                DrawDebugSphere(GetWorld(), ImpactPoint, SuppressionRadius, 16, FColor::Yellow, false, 0, 0, 1.5f);
 #endif
             }
         }
     }
 }
 
-void AExtinguisher::OnRep_SprayData()
+void AExtinguisher::OnRep_Spray()
 {
     // Hook for client-side VFX if needed.
+    if (bIsSpraying)
+    {
+        Spray->SetVisibility(true);
+        Spray->ResetSystem();
+    }
+    else
+    {
+        Spray->Deactivate();
+    }
+}
+
+void AExtinguisher::OnRep_IsAiming(bool Previous)
+{
+    Super::OnRep_IsAiming(Previous);
+    // if (!OwningPlayer->IsLocallyControlled()) return;
+    
+    if (bIsAiming)
+    {
+        Hose->SetVisibility(false);
+        HoseForAim->SetVisibility(true);
+    }
+    else
+    {
+        Hose->SetVisibility(true);
+        HoseForAim->SetVisibility(false);
+    }
 }
 
 void AExtinguisher::ServerUpdateSpray_Implementation(const FVector_NetQuantize& InStart, const FVector_NetQuantizeNormal& InDirection)

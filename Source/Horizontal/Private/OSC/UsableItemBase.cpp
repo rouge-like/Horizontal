@@ -179,10 +179,14 @@ bool AUsableItemBase::TryAttachToOwnerMesh()
         if (!SocketName.IsEmpty())
         {
             AttachToComponent(PlayerMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName(*SocketName));
+            SetActorRelativeRotation(EquipRotation);
+            SetActorRelativeLocation(EquipLocation);
         }
         else
         {
             AttachToComponent(PlayerMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+            SetActorRelativeRotation(EquipRotation);
+            SetActorRelativeLocation(EquipLocation);
         }
 
         return true;

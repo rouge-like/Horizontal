@@ -5,7 +5,7 @@
 #include "Extinguisher.generated.h"
 
 class AFireManager;
-class USphereComponent;
+class UCapsuleComponent;
 
 UCLASS()
 class HORIZONTAL_API AExtinguisher : public AAimableItemBase
@@ -21,6 +21,7 @@ protected:
     virtual void BeginPlay() override;
     virtual void HandleStartUse() override;
     virtual void HandleStopUse() override;
+    virtual void HandleStartAim() override;
     virtual void HandleStopAim() override;
     virtual bool GatherUseData(FVector& OutStartLocation, FVector& OutDirection) const override;
     virtual void HandlePickupAvailabilityChanged() override;
@@ -30,9 +31,18 @@ protected:
 
     void UpdateSpray(float DeltaTime);
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
-    USphereComponent* CollisionComponent;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    UCapsuleComponent* CollisionComponent;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
+    UStaticMeshComponent* Body;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
+    UStaticMeshComponent* Hose;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
+    UStaticMeshComponent* HoseForAim;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
+    UNiagaraComponent* Spray;
+    
     UPROPERTY(EditDefaultsOnly, Category="Spray")
     FVector LocalSprayOffset = FVector(15.0f, 0.0f, 0.0f);
 
@@ -51,19 +61,21 @@ protected:
     UPROPERTY()
     AFireManager* FireManager;
 
-    UPROPERTY(Replicated)
+    UPROPERTY(ReplicatedUsing=OnRep_Spray)
     bool bIsSpraying = false;
 
-    UPROPERTY(ReplicatedUsing=OnRep_SprayData)
+    UPROPERTY(Replicated)
     FVector_NetQuantize CurrentSprayStart;
 
-    UPROPERTY(ReplicatedUsing=OnRep_SprayData)
+    UPROPERTY(Replicated)
     FVector_NetQuantizeNormal CurrentSprayDirection;
 
     float SprayUpdateAccumulator = 0.0f;
 
     UFUNCTION()
-    void OnRep_SprayData();
+    void OnRep_Spray();
+    
+    virtual void OnRep_IsAiming(bool Previous) override;
 
     UFUNCTION(Server, Reliable)
     void ServerUpdateSpray(const FVector_NetQuantize& InStart, const FVector_NetQuantizeNormal& InDirection);

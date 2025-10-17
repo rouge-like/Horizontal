@@ -7,6 +7,7 @@
 class UNiagaraComponent;
 struct FVector_NetQuantize;
 struct FVector_NetQuantizeNormal;
+enum class EHandsState : uint8;
 
 UCLASS()
 class HORIZONTAL_API AAimableItemBase : public AUsableItemBase
@@ -50,7 +51,10 @@ protected:
     void ServerStopAim();
 
     UFUNCTION()
-    void OnRep_IsAiming(bool Previous);
+    virtual void OnRep_IsAiming(bool Previous);
+
+    UPROPERTY(EditDefaultsOnly)
+    EHandsState HandsState;
 
 protected:
     UPROPERTY(Transient, ReplicatedUsing = OnRep_IsAiming)
