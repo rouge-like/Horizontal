@@ -114,6 +114,9 @@ protected:
     UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="1.0"))
     float LeafCellSize = 50.0f;
 
+    UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="1.0"))
+    float FireVFXSize = 1.0f;
+    
     UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="0"))
     int32 MaxOctreeDepth = 4;
 

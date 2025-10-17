@@ -161,7 +161,7 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
     {
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
         const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-        //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+        DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
 #endif
         Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
         return Result;
@@ -196,7 +196,7 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-    //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+    DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
 #endif
 
     if (!Result.bAnyBurning)
@@ -318,7 +318,7 @@ void AFireManager::SubdivideCell(int32 CellIndex)
                 const FVector ChildCenter = Cell.WorldCenter + FVector(OffsetX, OffsetY, OffsetZ);
                 const int32 ChildIndex = CreateCell(ChildCenter, ChildExtent, Cell.Depth + 1, CellIndex);
 
-                UE_LOG(LogTemp, Warning, TEXT("Created %d %d %d"), CellIndex, ChildCounter, ChildIndex)
+                //UE_LOG(LogTemp, Warning, TEXT("Created %d %d %d"), CellIndex, ChildCounter, ChildIndex)
                 
                 Cells[CellIndex].ChildIndices[ChildCounter++] = ChildIndex;
             }
@@ -430,7 +430,7 @@ void AFireManager::IgniteSphereRecursive(int32 CellIndex, const FVector& Center,
         {
             for (int32 ChildIndex : Cells[CellIndex].ChildIndices)
             {
-                UE_LOG(LogTemp, Warning, TEXT("Receive %d %d"), CellIndex, ChildIndex);
+                //UE_LOG(LogTemp, Warning, TEXT("Receive %d %d"), CellIndex, ChildIndex);
                 
                 if (ChildIndex != INDEX_NONE)
                 {
@@ -697,8 +697,6 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
         return;
     }
 
-    const float SpawnScale = 2.5f;
-
     if (TWeakObjectPtr<AVFXActor>* ExistingPtr = ActiveFireVFXActors.Find(CellIndex))
     {
         if (AVFXActor* ExistingActor = ExistingPtr->Get())
@@ -721,7 +719,7 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
 
     if (!VFXName.IsNone() && VFXManager.IsValid())
     {
-        SpawnedActor = VFXManager->SpawnVFX(VFXName, SpawnLocation, SpawnRotation, FVector(SpawnScale));
+        SpawnedActor = VFXManager->SpawnVFX(VFXName, SpawnLocation, SpawnRotation, FVector(FireVFXSize));
     }
 
     if (!IsValid(SpawnedActor))
@@ -846,7 +844,8 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     {
         Cell.Heat = FMath::Max(0.0f, Cell.Heat - SuppressionAmount);
         bModified = true;
-
+        UE_LOG(LogTemp, Warning, TEXT("Cell %d : %f / -%f"), CellIndex, Cell.Heat, SuppressionAmount);
+        
         if (Cell.Heat <= KINDA_SMALL_NUMBER)
         {
             Cell.Heat = 0.0f;
@@ -859,6 +858,7 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     {
         Cell.IgnitionTimeRemaining = FMath::Max(0.0f, Cell.IgnitionTimeRemaining - SuppressionAmount);
         Cell.Heat = FMath::Max(0.0f, Cell.Heat - SuppressionAmount);
+
         bModified = true;
 
         if (Cell.IgnitionTimeRemaining <= KINDA_SMALL_NUMBER || Cell.Heat <= KINDA_SMALL_NUMBER)
