@@ -20,7 +20,7 @@ public:
 	AHorrorGameMode();
 
 	virtual void BeginPlay() override;
-    
+	virtual void StartPlay() override;
 protected:
 	// 새로운 플레이어가 성공적으로 로그인했을 때 서버에서 호출되는 함수
 	virtual void PostLogin(APlayerController* NewPlayer) override;

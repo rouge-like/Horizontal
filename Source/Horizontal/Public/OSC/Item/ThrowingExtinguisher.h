@@ -42,7 +42,7 @@ protected:
     /** 투사체 정지 시 물리/충돌 상태 초기화 */
     UFUNCTION()
     void HandleProjectileStop(const FHitResult& ImpactResult);
-
+    
     /** 투척 시 에임 FOV를 즉시 복구하도록 클라이언트 처리 */
     UFUNCTION(Client, Reliable)
     void ClientHandleThrow();
@@ -74,6 +74,8 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Transient,Category="Visual")
     TArray<USplineMeshComponent*> ActiveSplineMeshes;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Visual")
+    UStaticMeshComponent* HitSphereComponent;
     
     UPROPERTY(EditDefaultsOnly, Category="Throw", meta=(ClampMin="0.0"))
     float ThrowSpeed = 1500.0f;
@@ -87,6 +89,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Throw", meta=(ClampMin="0.0"))
     float TrajectorySimFrequency = 15.0f;
 
+    UPROPERTY(EditDefaultsOnly, Category="Throw", meta=(ClampMin="0.0"))
+    float HitRadius = 100.0f;
+    
     UPROPERTY(EditDefaultsOnly, Category="Throw", meta=(ClampMin="0.0"))
     float CollisionRadius = 12.0f;
 
@@ -105,6 +110,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category="Throw")
     FVector LocalThrowOffset = FVector(15.0f, 0.0f, 0.0f);
 
+    UPROPERTY(EditDefaultsOnly, Category="Throw")
+    FName VFXName;
+    
     bool bInFlight = false;
     TWeakObjectPtr<AActor> LastThrowingActor;
 };

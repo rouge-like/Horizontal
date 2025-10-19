@@ -4,6 +4,7 @@
 #include "HorizontalCharacter.h"
 #include "PlayerBase.generated.h"
 
+class UNiagaraComponent;
 class UInventoryComponent;
 class UInputAction;
 
@@ -15,7 +16,8 @@ enum class EHandsState : uint8
 	None,
 	CoveringMouth,
 	TwoHandedGrabbing,
-	Aiming
+	Aiming,
+	Throw
 };
 
 
@@ -45,7 +47,7 @@ protected:
 	// 인벤토리 컴포넌트
 	UPROPERTY(EditDefaultsOnly)
 	UInventoryComponent* InventoryComp;
-
+	
 	// 양손 상태 (애니메이션용)
 	UPROPERTY(Replicated)
 	EHandsState HandsState;

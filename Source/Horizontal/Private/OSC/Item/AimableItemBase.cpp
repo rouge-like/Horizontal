@@ -1,192 +1,213 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "OSC/Item/AimableItemBase.h"
 
 #include "Camera/CameraComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
 
-
-// Sets default values
 AAimableItemBase::AAimableItemBase()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
 void AAimableItemBase::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 }
 
 void AAimableItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AAimableItemBase, bIsAiming);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AAimableItemBase, bIsAiming);
 }
 
-// Called every frame
-void AAimableItemBase::Tick(float DeltaTime)
+void AAimableItemBase::Tick(float DeltaSeconds)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaSeconds);
 
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	if (!IsValid(LocalOwner)) return;
-	if (!LocalOwner->IsLocallyControlled()) return;
-	
-	// 에임 Lerp 처리
-	if (bStartLerpOnAim)
-	{
-		if (LerpOnAimAlpha >= 1.0f)
-		{
-			LerpOnAimAlpha = 1;
-			bStartLerpOnAim = false;
-			LocalOwner->GetFirstPersonCameraComponent()->FieldOfView = AimingFOV;
-		}
-		else
-		{
-			float Target = FMath::Lerp(OriginFOV, AimingFOV, LerpOnAimAlpha);
-			LocalOwner->GetFirstPersonCameraComponent()->FieldOfView = Target;
-			LerpOnAimAlpha += DeltaTime * InterpSpeed;
-		}
-	}
-	// 에임 해제 Lerp 처리
-	if (bStartLerpOffAim)
-	{
-		if (LerpOffAimAlpha >= 1.0f)
-		{
-			LerpOffAimAlpha = 1;
-			bStartLerpOffAim = false;
-			LocalOwner->GetFirstPersonCameraComponent()->FieldOfView = OriginFOV;
-		}
-		else
-		{
-			float Target = FMath::Lerp(AimingFOV, OriginFOV, LerpOffAimAlpha);
-			LocalOwner->GetFirstPersonCameraComponent()->FieldOfView = Target;
-			LerpOffAimAlpha += DeltaTime * InterpSpeed;
-		}
-	}
+    APlayerBase* LocalOwner = OwningPlayer.Get();
+    if (!IsValid(LocalOwner) || !LocalOwner->IsLocallyControlled())
+    {
+        return;
+    }
+
+    if (bStartLerpOnAim)
+    {
+        if (UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent())
+        {
+            if (LerpOnAimAlpha >= 1.0f)
+            {
+                LerpOnAimAlpha = 1.0f;
+                bStartLerpOnAim = false;
+                Camera->SetFieldOfView(AimingFOV);
+            }
+            else
+            {
+                const float TargetFOV = FMath::Lerp(OriginFOV, AimingFOV, LerpOnAimAlpha);
+                Camera->SetFieldOfView(TargetFOV);
+                LerpOnAimAlpha += DeltaSeconds * InterpSpeed;
+            }
+        }
+    }
+
+    if (bStartLerpOffAim)
+    {
+        if (UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent())
+        {
+            if (LerpOffAimAlpha >= 1.0f)
+            {
+                LerpOffAimAlpha = 1.0f;
+                bStartLerpOffAim = false;
+                Camera->SetFieldOfView(OriginFOV);
+            }
+            else
+            {
+                const float TargetFOV = FMath::Lerp(AimingFOV, OriginFOV, LerpOffAimAlpha);
+                Camera->SetFieldOfView(TargetFOV);
+                LerpOffAimAlpha += DeltaSeconds * InterpSpeed;
+            }
+        }
+    }
 }
 
 void AAimableItemBase::StartAim()
 {
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
-	{
-		bStartLerpOnAim = true;
-		bStartLerpOffAim = false;
-		LerpOnAimAlpha = 0;
-	}
-	if (HasAuthority())
-		HandleStartAim();
-	else
-		ServerStartAim();
+    APlayerBase* LocalOwner = OwningPlayer.Get();
+    if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
+    {
+        bStartLerpOnAim = true;
+        bStartLerpOffAim = false;
+        LerpOnAimAlpha = 0.0f;
+    }
+
+    if (HasAuthority())
+    {
+        HandleStartAim();
+    }
+    else
+    {
+        ServerStartAim();
+    }
 }
 
 void AAimableItemBase::StopAim()
 {
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
-	{
-		bStartLerpOffAim = true;
-		bStartLerpOnAim = false;
-		LerpOffAimAlpha = 0;
-	}
-	if (HasAuthority())
-		HandleStopAim();
-	else
-		ServerStopAim();
+    APlayerBase* LocalOwner = OwningPlayer.Get();
+    if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
+    {
+        bStartLerpOffAim = true;
+        bStartLerpOnAim = false;
+        LerpOffAimAlpha = 0.0f;
+    }
+
+    if (HasAuthority())
+    {
+        HandleStopAim();
+    }
+    else
+    {
+        ServerStopAim();
+    }
 }
 
 void AAimableItemBase::OnRep_Owner()
 {
-	Super::OnRep_Owner();
-	
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
-	{
-		UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent();
-		if (IsValid(Camera))
-			OriginFOV = Camera->FieldOfView;
-	}
+    Super::OnRep_Owner();
+
+    if (APlayerBase* LocalOwner = OwningPlayer.Get())
+    {
+        if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
+        {
+            if (UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent())
+            {
+                OriginFOV = Camera->FieldOfView;
+            }
+        }
+    }
 }
 
 void AAimableItemBase::OnEquip()
 {
-	Super::OnEquip();
+    Super::OnEquip();
 
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
-	{
-		UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent();
-		if (IsValid(Camera))
-			OriginFOV = Camera->FieldOfView;
-	}
+    if (APlayerBase* LocalOwner = OwningPlayer.Get())
+    {
+        if (IsValid(LocalOwner) && LocalOwner->IsLocallyControlled())
+        {
+            if (UCameraComponent* Camera = LocalOwner->GetFirstPersonCameraComponent())
+            {
+                OriginFOV = Camera->FieldOfView;
+            }
+        }
+    }
 }
 
 void AAimableItemBase::OnUnequip()
 {
-	Super::OnUnequip();
+    Super::OnUnequip();
 
-	if (bIsAiming) StopAim();
+    if (bIsAiming)
+    {
+        StopAim();
+    }
 }
 
 void AAimableItemBase::HandleStartAim()
 {
-	bIsAiming = true;
+    bIsAiming = true;
 
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-
-	if (IsValid(LocalOwner))
-		LocalOwner->SetHandsState(EHandsState::Aiming);
+    if (APlayerBase* LocalOwner = OwningPlayer.Get())
+    {
+        LocalOwner->SetHandsState(HandsState);
+    }
 }
 
 void AAimableItemBase::HandleStopAim()
 {
-	bIsAiming = false;
+    bIsAiming = false;
 
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-
-	if (IsValid(LocalOwner))
-		LocalOwner->SetHandsState(EHandsState::None);
+    if (APlayerBase* LocalOwner = OwningPlayer.Get())
+    {
+        LocalOwner->SetHandsState(EHandsState::None);
+    }
 }
 
 void AAimableItemBase::OnRep_IsAiming(bool Previous)
 {
-	if (Previous == bIsAiming)
-		return;
-	
-	APlayerBase* LocalOwner = OwningPlayer.Get();
-	
-	if (!IsValid(LocalOwner)) return;
-	if (!LocalOwner->IsLocallyControlled()) return;
+    if (Previous == bIsAiming)
+    {
+        return;
+    }
 
-	if (bIsAiming)
-	{
-		LocalOwner->SetHandsState(EHandsState::Aiming);
-	}
-	else
-	{
-		LocalOwner->SetHandsState(EHandsState::None);
-	}
+    APlayerBase* LocalOwner = OwningPlayer.Get();
+    if (!IsValid(LocalOwner) || !LocalOwner->IsLocallyControlled())
+    {
+        return;
+    }
+
+    if (bIsAiming)
+    {
+        LocalOwner->SetHandsState(HandsState);
+    }
+    else
+    {
+        LocalOwner->SetHandsState(EHandsState::None);
+    }
 }
 
 void AAimableItemBase::ServerStartAim_Implementation()
 {
-	HandleStartAim();
+    HandleStartAim();
 }
 
 void AAimableItemBase::ServerStopAim_Implementation()
 {
-	HandleStopAim();
+    HandleStopAim();
 }
 
 void AAimableItemBase::StartUse()
 {
-    FVector StartLocation = FVector::ZeroVector;
-    FVector Direction = FVector::ZeroVector;
+    FVector StartLocation;
+    FVector Direction;
     const bool bHasData = GatherUseData(StartLocation, Direction);
 
     if (HasAuthority())
@@ -201,9 +222,7 @@ void AAimableItemBase::StartUse()
         const FVector NormalizedDirection = Direction.GetSafeNormal();
         if (!NormalizedDirection.IsNearlyZero())
         {
-            const FVector_NetQuantize NetStart(StartLocation);
-            const FVector_NetQuantizeNormal NetDirection(NormalizedDirection);
-            ServerStartUseWithAimData(NetStart, NetDirection, true);
+            ServerStartUseWithAimData(FVector_NetQuantize(StartLocation), FVector_NetQuantizeNormal(NormalizedDirection), true);
             return;
         }
     }
@@ -257,4 +276,3 @@ void AAimableItemBase::ServerStartUseWithAimData_Implementation(const FVector_Ne
         Super::StartUse();
     }
 }
-

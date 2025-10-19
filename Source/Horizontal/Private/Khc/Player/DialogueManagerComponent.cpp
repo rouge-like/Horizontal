@@ -2,7 +2,10 @@
 
 
 #include "Khc/Player/DialogueManagerComponent.h"
+
+#include "AIController.h"
 #include "Blueprint/UserWidget.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Khc/Gimmick/AStarGridManager.h"
 #include "Khc/Gimmick/AStarNavigationManager.h"
@@ -10,6 +13,8 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Kismet/GameplayStatics.h"
+
+class AAIController;
 
 UDialogueManagerComponent::UDialogueManagerComponent()
 {
@@ -36,6 +41,22 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 	CurrentInteractableComponent = TargetComp; // 통합된 변수에 저장
 	CurrentDialogueLabel = StartingLabel;
 
+	if (UNPCInteractionComponent* NPCComp = Cast<UNPCInteractionComponent>(TargetComp))
+	{
+		ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
+		APlayerController* PC = GetOwner<APlayerController>();
+
+		if (NPC && PC)
+		{
+			AAIController* NPCController = Cast<AAIController>(NPC->GetController());
+			// NPC의 AI 컨트롤러에게 대화가 끝날 때까지 플레이어를 바라보도록 설정
+			if (NPCController)
+			{
+				NPCController->SetFocus(PC->GetPawn());
+			}
+		}
+	}
+	
 	if (DialogueTable && !CurrentDialogueLabel.IsNone())
 	{
 		FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
@@ -168,7 +189,13 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	{
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (!PC) return;
-
+		
+		PC->FlushPressedKeys();
+		if (ACharacter* PlayerCharacter = PC->GetCharacter())
+		{
+			PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+		}
+		
 		DialogueWidgetInstance = CreateWidget<UDialogueWidget>(PC, DialogueWidgetClass);
 		DialogueWidgetInstance->AddToViewport();
 		PC->SetInputMode(FInputModeUIOnly()); // 입력 모드를 UI 전용으로 변경
@@ -200,6 +227,22 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 
 void UDialogueManagerComponent::Client_EndDialogue_Implementation()
 {
+	if (GetOwner()->HasAuthority())
+	{
+		if (CurrentInteractableComponent.IsValid())
+		{
+			ANPCBase* NPC = Cast<ANPCBase>(CurrentInteractableComponent->GetOwner());
+			if (NPC)
+			{
+				AAIController* NPCController = Cast<AAIController>(NPC->GetController());
+				if (NPCController)
+				{
+					NPCController->ClearFocus(EAIFocusPriority::Gameplay);
+				}
+			}
+		}
+	}
+	
 	if (DialogueWidgetInstance)
 	{
 		DialogueWidgetInstance->RemoveFromParent();

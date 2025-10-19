@@ -1,77 +1,81 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "OSC/UsableItemBase.h"
+#include "AimableItemBase.generated.h"
 
+class UNiagaraComponent;
 struct FVector_NetQuantize;
 struct FVector_NetQuantizeNormal;
-#include "AimableItemBase.generated.h"
+enum class EHandsState : uint8;
 
 UCLASS()
 class HORIZONTAL_API AAimableItemBase : public AUsableItemBase
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
-	AAimableItemBase();
+    AAimableItemBase();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-	virtual void StartUse() override;
+    virtual void Tick(float DeltaSeconds) override;
+    virtual void StartUse() override;
 
-	void StartAim();
-	void StopAim();
-	
-	virtual void OnRep_Owner() override;
-	
+    void StartAim();
+    void StopAim();
+
+    virtual void OnRep_Owner() override;
+
 protected:
-	virtual void OnEquip() override;
-	virtual void OnUnequip() override;
-	virtual void HandleStartAim();
-	virtual void HandleStopAim();
+    virtual void OnEquip() override;
+    virtual void OnUnequip() override;
 
-	virtual bool GatherUseData(FVector& OutStartLocation, FVector& OutDirection) const;
-	bool ConsumeUseData(FVector& OutStartLocation, FVector& OutDirection);
-	void SetPendingUseData(const FVector& InStartLocation, const FVector& InDirection, bool bIsValid);
+    virtual void HandleStartAim();
+    virtual void HandleStopAim();
 
-	UFUNCTION(Server, Reliable)
-	void ServerStartUseWithAimData(const FVector_NetQuantize& ClientStartLocation, const FVector_NetQuantizeNormal& ClientDirection, bool bClientProvidedData);
-	UFUNCTION(Server, Reliable)
-	void ServerStartAim();
-	UFUNCTION(Server, Reliable)
-	void ServerStopAim();
+    virtual bool GatherUseData(FVector& OutStartLocation, FVector& OutDirection) const;
+    bool ConsumeUseData(FVector& OutStartLocation, FVector& OutDirection);
+    void SetPendingUseData(const FVector& InStartLocation, const FVector& InDirection, bool bIsValid);
 
-	UPROPERTY(Transient, ReplicatedUsing = OnRep_IsAiming)
-	bool bIsAiming = false;
+    UFUNCTION(Server, Reliable)
+    void ServerStartUseWithAimData(const FVector_NetQuantize& ClientStartLocation, const FVector_NetQuantizeNormal& ClientDirection, bool bClientProvidedData);
 
-	bool bStartLerpOnAim = false;
-	bool bStartLerpOffAim = false;
+    UFUNCTION(Server, Reliable)
+    void ServerStartAim();
 
-	float LerpOnAimAlpha = 0;
-	float LerpOffAimAlpha = 0;
-	
-	UPROPERTY(EditAnywhere)
-	float InterpSpeed = 1.0f;
-		
-	
-	UPROPERTY(EditAnywhere)
-	float AimingFOV;
-	UPROPERTY(EditAnywhere)
-	float OriginFOV;
+    UFUNCTION(Server, Reliable)
+    void ServerStopAim();
 
-	FVector PendingUseStartLocation = FVector::ZeroVector;
-	FVector PendingUseDirection = FVector::ZeroVector;
-	bool bHasPendingUseData = false;
-	
-	UFUNCTION()
-	void OnRep_IsAiming(bool Previous);
+    UFUNCTION()
+    virtual void OnRep_IsAiming(bool Previous);
+
+    UPROPERTY(EditDefaultsOnly)
+    EHandsState HandsState;
+
+protected:
+    UPROPERTY(Transient, ReplicatedUsing = OnRep_IsAiming)
+    bool bIsAiming = false;
+
+    bool bStartLerpOnAim = false;
+    bool bStartLerpOffAim = false;
+
+    float LerpOnAimAlpha = 0.0f;
+    float LerpOffAimAlpha = 0.0f;
+
+    UPROPERTY(EditAnywhere, Category="Aim")
+    float InterpSpeed = 1.0f;
+
+    UPROPERTY(EditAnywhere, Category="Aim")
+    float AimingFOV = 70.0f;
+
+    UPROPERTY(Transient)
+    float OriginFOV = 90.0f;
+
+    FVector PendingUseStartLocation = FVector::ZeroVector;
+    FVector PendingUseDirection = FVector::ZeroVector;
+    bool bHasPendingUseData = false;
 };
