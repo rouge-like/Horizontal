@@ -19,6 +19,8 @@ public:
 	// 이 컴포넌트가 복제할 변수들을 엔진에 등록
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	virtual void BeginPlay() override;
+
 	/** 플레이어가 상호작용을 시도할 때 호출되는 메인 진입 함수. 자식 클래스에서 재정의(override)하여 구체적인 행동을 정의. */
 	virtual void InitiateInteraction(ACharacter* InteractingCharacter);
 
@@ -42,8 +44,18 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Interaction")
 	FOnInteractionSignature OnInteraction;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction Components")
+	TObjectPtr<class UWidgetComponent> InteractionUI;
+
+	/** 이 UI에 표시할 위젯 블루프린트 클래스 (에디터에서 설정) */
+	UPROPERTY(EditAnywhere, Category = "Interaction")
+	TSubclassOf<class UUserWidget> InteractionWidgetClass;
+
 protected:
 	/** 서버에서만 변경되고, 모든 클라이언트로 복제되는 '상호작용 가능 여부' 상태 변수. */
 	UPROPERTY(Replicated)
 	bool bIsInteractable = true;
+
+	UFUNCTION()
+	void OnRep_IsInteractable();
 };

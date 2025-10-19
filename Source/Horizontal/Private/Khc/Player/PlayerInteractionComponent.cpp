@@ -45,9 +45,10 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	if (FocusedInteractable.IsValid())
 	{
 		// 이제 어떤 액터든 상관없이 WidgetComponent를 찾아서 끕니다.
-		if (UWidgetComponent* InteractionUI = FocusedInteractable->GetOwner()->FindComponentByClass<UWidgetComponent>())
+		if (FocusedInteractable->InteractionUI)
 		{
-			InteractionUI->SetVisibility(false);
+		
+			FocusedInteractable->InteractionUI->SetVisibility(false);
 		}
 	}
 	FocusedInteractable = nullptr;
@@ -68,15 +69,18 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, QueryParams))
 	{
+		// 부딪힌 액터에서 'UInteractableComponentBase'를 찾음
 		UInteractableComponentBase* FoundComp = HitResult.GetActor()->FindComponentByClass<UInteractableComponentBase>();
 
+		// --- 여기가 수정된 부분입니다 ---
 		if (FoundComp && FoundComp->IsInteractable())
 		{
 			FocusedInteractable = FoundComp;
-			// 해당 액터의 WidgetComponent를 찾아서 UI를 켭니다.
-			if (UWidgetComponent* InteractionUI = FoundComp->GetOwner()->FindComponentByClass<UWidgetComponent>())
+
+			// 컴포넌트가 직접 가진 UI를 켭니다.
+			if (FoundComp->InteractionUI)
 			{
-				InteractionUI->SetVisibility(true);
+				FoundComp->InteractionUI->SetVisibility(true);
 			}
 		}
 	}

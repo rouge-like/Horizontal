@@ -33,7 +33,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
 	class UNPCInteractionComponent* InteractionComp;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|AI")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "NPC|AI")
 	TObjectPtr<ASafetyZone> TargetSafetyZone;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
