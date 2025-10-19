@@ -85,6 +85,12 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 		ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
 		if (NPC && NPC->FSMComp)
 		{
+			AAIController* NPCController = Cast<AAIController>(NPC->GetController());
+			if (NPCController)
+			{
+				NPCController->ClearFocus(EAIFocusPriority::Gameplay);
+			}
+
 			// 이동 전에 그리드를 다시 만들도록 요청
 			AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
 			if (NavManager)

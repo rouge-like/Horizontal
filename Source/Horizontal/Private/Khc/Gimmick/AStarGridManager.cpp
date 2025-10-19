@@ -149,12 +149,17 @@ void AAStarGridManager::BlurObstaclePenalties(int32 BlurSize)
 
 void AAStarGridManager::RebuildGrid()
 {
+    if (!HasAuthority()) return;
+
     CreateGrid();
 }
 
 void AAStarGridManager::BeginPlay()
 {
     Super::BeginPlay();
+
+    if (!HasAuthority()) return;
+
     CreateGrid();
 
     // TArray<AActor*> FoundObstacles;
