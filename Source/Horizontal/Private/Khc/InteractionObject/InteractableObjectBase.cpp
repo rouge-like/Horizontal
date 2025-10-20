@@ -31,10 +31,10 @@ AInteractableObjectBase::AInteractableObjectBase()
 	InteractionComponent->SphereComp->SetSphereRadius(100.f);
 
 	// 3. UI 위젯 컴포넌트 생성 및 설정
-	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
-	InteractionUI->SetupAttachment(RootComponent); // 메시 컴포넌트에 부착
-	InteractionUI->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 바라보도록 설정
-	InteractionUI->SetVisibility(false); // 기본적으로 숨겨둠
+	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
+	// InteractionUI->SetupAttachment(RootComponent); // 메시 컴포넌트에 부착
+	// InteractionUI->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 바라보도록 설정
+	// InteractionUI->SetVisibility(false); // 기본적으로 숨겨둠
 }
 
 void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

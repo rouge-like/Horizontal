@@ -26,17 +26,17 @@ ANPCBase::ANPCBase()
 		InteractionComp->SphereComp->SetupAttachment(RootComponent);
 		InteractionComp->SphereComp->SetSphereRadius(100.f);
 	}
-	
-	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
-	InteractionUI->SetupAttachment(RootComponent);
+	//
+	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
+	// InteractionUI->SetupAttachment(RootComponent);
 }
 
 void ANPCBase::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (InteractionUI)
-		InteractionUI->SetVisibility(false);
+	//
+	// if (InteractionUI)
+	// 	InteractionUI->SetVisibility(false);
 }
 
 void ANPCBase::Tick(float DeltaTime)
