@@ -152,6 +152,9 @@ private:
     void SubdivideCell(int32 CellIndex);
     void CollapseCell(int32 CellIndex);
 
+    TSet<int32> ActiveCells;     // 현재 불타거나 점화 중인 셀 인덱스
+    TSet<int32> NextActiveCells; // 다음 프레임에 활성화될 셀
+    
     struct FFireCellTickResult
     {
         bool bIsLeaf = true;
@@ -168,6 +171,7 @@ private:
     void SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, const FBox& SourceBounds);
 
     FFireCellTickResult ProcessCellRecursive(int32 CellIndex, float DeltaSeconds);
+    FFireCellTickResult ProcessCollapseRecursive(int32 CellIndex, float DeltaSeconds);
 
     bool AreBoxesPotentiallyAdjacent(const FBox& SourceBounds, const FBox& TargetBounds) const;
     bool AreBoxesAdjacent(const FBox& SourceBounds, const FBox& TargetBounds) const;
