@@ -291,7 +291,7 @@ void AAStarGridManager::CreateGrid()
         }
     }
 
-    BlurObstaclePenalties(3);
+    BlurObstaclePenalties(blurSize);
     bGridReady = true;
     UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
 }

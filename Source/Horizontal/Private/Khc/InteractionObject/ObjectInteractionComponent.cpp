@@ -23,8 +23,6 @@ void UObjectInteractionComponent::InitiateInteraction(ACharacter* InteractingCha
 {
 	Super::InitiateInteraction(InteractingCharacter);
 
-	Super::InitiateInteraction(InteractingCharacter);
-
 	// 부모 로직 통과 후, 오브젝트 고유의 추가 로직 실행
 	if (IsInteractable())
 	{
