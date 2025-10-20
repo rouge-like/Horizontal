@@ -55,7 +55,7 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
         FVector Waypoint = CurrentPath[CurrentPathIndex];
 
         // 1. 도착 판정: 다음 경유지에 충분히 가까워졌는지 확인
-        if (FVector::Dist2D(CurrentLocation, Waypoint) < 150.f)
+        if (FVector::Dist2D(CurrentLocation, Waypoint) < 60.f)
         {
             CurrentPathIndex++;
             // 경로의 마지막에 도달했는지 다시 한번 체크

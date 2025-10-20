@@ -295,7 +295,6 @@ void AAStarGridManager::CreateGrid()
     // bGridReady = true;
     // UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
 
-
     NodeDiameter = NodeRadius * 2;
     GridSizeX = FMath::RoundToInt(GridWorldSize.X / NodeDiameter);
     GridSizeY = FMath::RoundToInt(GridWorldSize.Y / NodeDiameter);
@@ -311,13 +310,21 @@ void AAStarGridManager::CreateGrid()
     {
         WeightActors.Add(Cast<AWeightZone>(Actor));
     }
+
+
+    const float MyZ = GetActorLocation().Z; // 이 그리드 매니저의 Z 위치
+    const float ZThreshold = 150.0f;
     
     TArray<AActor*> FoundLinks;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);
     TArray<APathLinkZone*> NavLinks;
     for (AActor* Actor : FoundLinks)
     {
-        NavLinks.Add(Cast<APathLinkZone>(Actor));
+        if (FMath::Abs(Actor->GetActorLocation().Z - MyZ) < ZThreshold)
+        {
+            // 3. 같은 층에 있는 PathLink만 NavLinks 배열에 추가
+            NavLinks.Add(Cast<APathLinkZone>(Actor));
+        }
     }
 
     FCollisionQueryParams QueryParams;

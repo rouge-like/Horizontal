@@ -13,6 +13,8 @@
 #include "CollisionQueryParams.h"
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
+#include "GameFramework/GameStateBase.h"
+#include "OSC/PlayerBaseState.h"
 #include "OSC/VFX/VFXManager.h"
 #include "OSC/VFX/VFXActor.h"
 
@@ -67,6 +69,23 @@ void AFireManager::BeginPlay()
     }
 
     InitializeFireAreas();
+
+    FTimerHandle TimerHandle;
+    FTimerDelegate TimerDelegate;
+    TimerDelegate.BindLambda([this]
+    {
+        for (int32 RootIndex : RootCellIndices)
+        {
+            if (!Cells.IsValidIndex(RootIndex))
+            {
+                continue;
+            }
+    
+            ProcessCollapseRecursive(RootIndex, 1);
+        }
+    });
+
+    GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 1, true);
 }
 
 void AFireManager::Tick(float DeltaSeconds)
@@ -77,15 +96,100 @@ void AFireManager::Tick(float DeltaSeconds)
     {
         return;
     }
-
-    for (int32 RootIndex : RootCellIndices)
+    // for (int32 RootIndex : RootCellIndices)
+    // {
+    //     if (!Cells.IsValidIndex(RootIndex))
+    //     {
+    //         continue;
+    //     }
+    //
+    //     ProcessCellRecursive(RootIndex, DeltaSeconds);
+    // }
+    NextActiveCells.Empty();
+    
+    for (int32 CellIndex : ActiveCells)
     {
-        if (!Cells.IsValidIndex(RootIndex))
-        {
+        if (!Cells.IsValidIndex(CellIndex))
             continue;
+    
+        FFireCell& Cell = Cells[CellIndex];
+    
+        if (Cell.State == EFireCellState::Igniting)
+        {
+            Cell.IgnitionTimeRemaining -= DeltaSeconds;
+            
+            if (Cell.IgnitionTimeRemaining <= 0)
+            {
+                Cell.State = EFireCellState::Burning;
+                Cell.Heat = DefaultHeatValue;
+                ActivateFireVFX(CellIndex);
+            }
+            NextActiveCells.Add(CellIndex);
         }
+        else if (Cell.State == EFireCellState::Burning)
+        {
+            if (Cell.Heat > 0)
+            {
+                SpreadFireFromCell(CellIndex);
+                NextActiveCells.Add(CellIndex);
+            }
+            else
+            {
+                Cell.State = EFireCellState::Extinguished;
+                DeactivateFireVFX(CellIndex);
+            }
+        }
+    }
+    
+    ActiveCells = MoveTemp(NextActiveCells);
 
-        ProcessCellRecursive(RootIndex, DeltaSeconds);
+    CheckPlayerInFire(DeltaSeconds);
+}
+
+void AFireManager::CheckPlayerInFire(float DeltaSeconds)
+{
+    for (uint64 i = 0; i < GetWorld()->GetGameState()->PlayerArray.Num(); i++)
+    {
+        APlayerState* PS = GetWorld()->GetGameState()->PlayerArray[i];
+        
+        if (!PS) continue;
+
+        APlayerController* PC = PS->GetOwner<APlayerController>();
+        if (!PC) continue;
+
+        APawn* Pawn = PC->GetPawn();
+        if (!Pawn) continue;
+        
+        APlayerBaseState* PBS = Cast<APlayerBaseState>(PS);
+        
+        const FVector PlayerLocation = Pawn->GetActorLocation();
+        const FVector PlayerExtent = FVector(PBS->GetSize());
+        const FBox PlayerBox = FBox::BuildAABB(PlayerLocation, PlayerExtent);
+
+        GEngine->AddOnScreenDebugMessage(i, 0, FColor::White, FString::Printf(TEXT("Player %d's Score : %f"), i, PBS->InFireTime));
+        for (int32 CellIndex : ActiveCells)
+        {
+            if (!Cells.IsValidIndex(CellIndex))
+                continue;
+
+            const FFireCell& Cell = Cells[CellIndex];
+            float Value = 1.0f;
+
+            if (Cell.State == EFireCellState::Burning )  Value = 2.0f;
+            else if (Cell.State == EFireCellState::Igniting) Value = 1.0f;
+            else continue;;
+
+            const FBox FireBox = FBox::BuildAABB(Cell.WorldCenter, Cell.CellExtent);
+
+            if (PlayerBox.Intersect(FireBox))
+            {
+                if (PBS)
+                {
+                    PBS->AddFireTime(DeltaSeconds * Value);
+                }
+                break;
+            }
+        }
     }
 }
 
@@ -106,8 +210,9 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
         bool bAllChildrenExtinguishedOrDormant = true;
         bool bAnyChildBurning = false;
 
-        for (int32 ChildIndex : Cell.ChildIndices)
+        for (int32 i = 0; i < FFireCell::NumChildren; i++)
         {
+            int32 ChildIndex = Cells[CellIndex].ChildIndices[i];
             if (ChildIndex == INDEX_NONE)
             {
                 continue;
@@ -195,13 +300,106 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
     }
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-    const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-    DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+    const FColor DebugColor = Cells[CellIndex].State == EFireCellState::Burning ? FColor::Red : (Cells[CellIndex].State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
+    DrawDebugBox(GetWorld(), Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
 #endif
 
     if (!Result.bAnyBurning)
     {
-        Result.bAnyBurning = (LeafCell.State == EFireCellState::Burning || LeafCell.State == EFireCellState::Igniting)&& LeafCell.Heat > 0.0f;
+        Result.bAnyBurning = (Cells[CellIndex].State == EFireCellState::Burning || Cells[CellIndex].State == EFireCellState::Igniting)&& Cells[CellIndex].Heat > 0.0f;
+    }
+
+    return Result;
+}
+
+AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 CellIndex, float DeltaSeconds)
+{
+    FFireCellTickResult Result;
+
+    if (!Cells.IsValidIndex(CellIndex))
+    {
+        return Result;
+    }
+
+    FFireCell& Cell = Cells[CellIndex];
+
+    if (!Cell.bIsLeaf)
+    {
+        bool bAllChildrenLeaf = true;
+        bool bAllChildrenExtinguishedOrDormant = true;
+        bool bAnyChildBurning = false;
+
+        for (int32 i = 0; i < FFireCell::NumChildren; i++)
+        {
+            int32 ChildIndex = Cells[CellIndex].ChildIndices[i];
+            if (ChildIndex == INDEX_NONE)
+            {
+                continue;
+            }
+
+            FFireCellTickResult ChildResult = ProcessCollapseRecursive(ChildIndex, DeltaSeconds);
+            bAnyChildBurning |= ChildResult.bAnyBurning;
+
+            if (!Cells.IsValidIndex(ChildIndex))
+            {
+                bAllChildrenLeaf = false;
+                bAllChildrenExtinguishedOrDormant = false;
+                continue;
+            }
+
+            const FFireCell& ChildCell = Cells[ChildIndex];
+            if (!ChildCell.bIsLeaf)
+            {
+                bAllChildrenLeaf = false;
+                bAllChildrenExtinguishedOrDormant = false;
+                continue;
+            }
+
+            if (ChildCell.State != EFireCellState::Dormant && ChildCell.State != EFireCellState::Extinguished)
+            {
+                bAllChildrenExtinguishedOrDormant = false;
+            }
+        }
+
+        if (bAllChildrenLeaf && bAllChildrenExtinguishedOrDormant)
+        {
+            //UE_LOG(LogTemp, Warning, TEXT("Collapse"));
+            CollapseCell(CellIndex);
+            DeactivateFireVFX(CellIndex);
+            FFireCell& CollapsedCell = Cells[CellIndex];
+            CollapsedCell.State = EFireCellState::Extinguished;
+            CollapsedCell.Heat = 0.0f;
+            CollapsedCell.IgnitionTimeRemaining = 0.0f;
+            CollapsedCell.ActiveEffect = nullptr;
+        }
+        else
+        {
+            Result.bIsLeaf = false;
+            Result.bAnyBurning = bAnyChildBurning;
+            return Result;
+        }
+    }
+
+    FFireCell& LeafCell = Cells[CellIndex];
+
+//     if (LeafCell.CellExtent.IsNearlyZero())
+//     {
+// #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+//         const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
+//         DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, true, 2.0f, 0, 1.0f);
+// #endif
+//         Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
+//         return Result;
+//     }
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+    const FColor DebugColor = Cells[CellIndex].State == EFireCellState::Burning ? FColor::Red : (Cells[CellIndex].State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
+    DrawDebugBox(GetWorld(), Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent, FQuat::Identity, DebugColor, false, 1.0f, 0, 1.0f);
+#endif
+
+    if (!Result.bAnyBurning)
+    {
+        Result.bAnyBurning = (Cells[CellIndex].State == EFireCellState::Burning || Cells[CellIndex].State == EFireCellState::Igniting)&& Cells[CellIndex].Heat > 0.0f;
     }
 
     return Result;
@@ -315,8 +513,9 @@ void AFireManager::SubdivideCell(int32 CellIndex)
             for (int32 Z = 0; Z < 2; ++Z)
             {
                 const float OffsetZ = (Z == 0 ? -1.0f : 1.0f) * ChildExtent.Z;
-                const FVector ChildCenter = Cell.WorldCenter + FVector(OffsetX, OffsetY, OffsetZ);
-                const int32 ChildIndex = CreateCell(ChildCenter, ChildExtent, Cell.Depth + 1, CellIndex);
+                const FVector ChildCenter = Cells[CellIndex].WorldCenter + FVector(OffsetX, OffsetY, OffsetZ);
+                
+                const int32 ChildIndex = CreateCell(ChildCenter, ChildExtent, Cells[CellIndex].Depth + 1, CellIndex);
 
                 //UE_LOG(LogTemp, Warning, TEXT("Created %d %d %d"), CellIndex, ChildCounter, ChildIndex)
                 
@@ -449,6 +648,7 @@ void AFireManager::IgniteSphereRecursive(int32 CellIndex, const FVector& Center,
     Cell.State = EFireCellState::Burning;
     Cell.Heat = DefaultHeatValue;
     Cell.IgnitionTimeRemaining = 0.0f;
+    ActiveCells.Add(CellIndex);
     ActivateFireVFX(CellIndex);
 }
 
@@ -547,8 +747,10 @@ void AFireManager::SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, con
 
     if (!TargetCell.bIsLeaf)
     {
-        for (int32 ChildIndex : TargetCell.ChildIndices)
+        const int32 ChildNum = FFireCell::NumChildren;
+        for (int32 i = 0; i < ChildNum; i++)
         {
+            const int32 ChildIndex = Cells[TargetIndex].ChildIndices[i];
             if (ChildIndex != INDEX_NONE)
             {
                 SpreadFireRecursive(SourceIndex, ChildIndex, SourceBounds);
@@ -563,8 +765,9 @@ void AFireManager::SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, con
         SubdivideCell(TargetIndex);
         if (!Cells[TargetIndex].bIsLeaf)
         {
-            for (int32 ChildIndex : Cells[TargetIndex].ChildIndices)
+            for (int32 i = 0; i < FFireCell::NumChildren; i++)
             {
+                int32 ChildIndex = Cells[TargetIndex].ChildIndices[i];
                 if (ChildIndex != INDEX_NONE)
                 {
                     SpreadFireRecursive(SourceIndex, ChildIndex, SourceBounds);
@@ -589,6 +792,7 @@ void AFireManager::SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, con
         return;
     }
 
+    NextActiveCells.Add(TargetIndex);
     TargetCell.State = EFireCellState::Igniting;
     TargetCell.IgnitionTimeRemaining = IgnitionDelay;
 }
@@ -844,7 +1048,7 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     {
         Cell.Heat = FMath::Max(0.0f, Cell.Heat - SuppressionAmount);
         bModified = true;
-        UE_LOG(LogTemp, Warning, TEXT("Cell %d : %f / -%f"), CellIndex, Cell.Heat, SuppressionAmount);
+        // UE_LOG(LogTemp, Warning, TEXT("Cell %d : %f / -%f"), CellIndex, Cell.Heat, SuppressionAmount);
         
         if (Cell.Heat <= KINDA_SMALL_NUMBER)
         {
