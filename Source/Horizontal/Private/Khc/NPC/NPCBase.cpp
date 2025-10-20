@@ -49,4 +49,5 @@ void ANPCBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetime
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ANPCBase, bHasBeenInteractedWith);
+	DOREPLIFETIME(ANPCBase, TargetSafetyZone);
 }
