@@ -182,6 +182,12 @@ void APlayerBase::HandleSprintReleased()
 }
 void APlayerBase::HandlePickupStarted()
 {
+	//
+	if (InventoryComp->GetSelectedItem() != nullptr)
+	{
+		HandleDropStarted();
+		return;
+	}
 	FVector ViewLocation;
 	FRotator ViewRotation;
 	GetActorEyesViewPoint(ViewLocation, ViewRotation);
