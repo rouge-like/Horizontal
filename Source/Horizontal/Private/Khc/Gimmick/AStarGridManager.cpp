@@ -210,6 +210,91 @@ void AAStarGridManager::Tick(float DeltaTime)
 
 void AAStarGridManager::CreateGrid()
 {
+    // NodeDiameter = NodeRadius * 2;
+    // GridSizeX = FMath::RoundToInt(GridWorldSize.X / NodeDiameter);
+    // GridSizeY = FMath::RoundToInt(GridWorldSize.Y / NodeDiameter);
+    // Grid.SetNum(GridSizeX * GridSizeY);
+    //
+    // FVector WorldBottomLeft = GetActorLocation() - FVector::ForwardVector * GridWorldSize.X / 2 - FVector::RightVector * GridWorldSize.Y / 2;
+    //
+    // TArray<AActor*> FoundActors;
+    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeightZone::StaticClass(), FoundActors);
+    // TArray<AWeightZone*> WeightActors;
+    // for (AActor* Actor : FoundActors)
+    // {
+    //     WeightActors.Add(Cast<AWeightZone>(Actor));
+    // }
+    //
+    // TArray<AActor*> FoundLinks;
+    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);
+    // TArray<APathLinkZone*> NavLinks;
+    // for (AActor* Actor : FoundLinks)
+    // {
+    //     NavLinks.Add(Cast<APathLinkZone>(Actor));
+    // }
+    //
+    // for (int32 Y = 0; Y < GridSizeY; ++Y)
+    // {
+    //     for (int32 X = 0; X < GridSizeX; ++X)
+    //     {
+    //         int32 Index = Y * GridSizeX + X;
+    //         FVector WorldPoint = WorldBottomLeft
+    //             + FVector::ForwardVector * (X * NodeDiameter + NodeRadius)
+    //             + FVector::RightVector * (Y * NodeDiameter + NodeRadius);
+    //
+    //         WorldPoint.Z = GetActorLocation().Z;
+    //         
+    //         Grid[Index].WorldLocation = WorldPoint;
+    //         Grid[Index].GridIndex = FIntPoint(X, Y);
+    //
+    //         for (APathLinkZone* Link : NavLinks)
+    //         {
+    //             if (Link && FVector::DistSquared(Grid[Index].WorldLocation, Link->GetActorLocation()) < FMath::Square(NodeRadius))
+    //             {
+    //                 Grid[Index].LinkedActor = Link;
+    //                 Grid[Index].bIsObstacle = false; // 링크 지점은 장애물이 아니라고 보장
+    //                 break;
+    //             }
+    //         }
+    //
+    //         FCollisionQueryParams QueryParams;
+    //         QueryParams.AddIgnoredActor(this);
+    //
+    //         APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+    //         if (PlayerPawn)
+    //         {
+    //             QueryParams.AddIgnoredActor(PlayerPawn); // 플레이어 폰을 무시 목록에 추가
+    //         }
+    //
+    //         AActor* SafeZoneActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
+    //         if (SafeZoneActor)
+    //         {
+    //             QueryParams.AddIgnoredActor(SafeZoneActor); // SafetyZone도 무시 목록에 추가
+    //         }
+    //
+    //         // 장애물 검사
+    //         bool bHit = GetWorld()->OverlapAnyTestByObjectType(WorldPoint, FQuat::Identity, FCollisionObjectQueryParams(ObstacleObjectTypes), FCollisionShape::MakeSphere(NodeRadius), QueryParams);
+    //         Grid[Index].bIsObstacle = bHit;
+    //
+    //         if (!bHit)
+    //         {
+    //             // 가중치 적용
+    //             for (AWeightZone* WeightActor : WeightActors)
+    //             {
+    //                 if (WeightActor && WeightActor->GetWeightBox().IsInside(WorldPoint))
+    //                 {
+    //                     Grid[Index].MovementWeight = WeightActor->MovementWeight;
+    //                     break; // 첫 번째로 찾은 가중치를 적용하고 중단
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // BlurObstaclePenalties(blurSize);
+    // bGridReady = true;
+    // UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
+
     NodeDiameter = NodeRadius * 2;
     GridSizeX = FMath::RoundToInt(GridWorldSize.X / NodeDiameter);
     GridSizeY = FMath::RoundToInt(GridWorldSize.Y / NodeDiameter);
@@ -217,6 +302,7 @@ void AAStarGridManager::CreateGrid()
 
     FVector WorldBottomLeft = GetActorLocation() - FVector::ForwardVector * GridWorldSize.X / 2 - FVector::RightVector * GridWorldSize.Y / 2;
 
+    // --- 1. 정보 수집 (루프 시작 전 한 번만 실행) ---
     TArray<AActor*> FoundActors;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeightZone::StaticClass(), FoundActors);
     TArray<AWeightZone*> WeightActors;
@@ -225,73 +311,106 @@ void AAStarGridManager::CreateGrid()
         WeightActors.Add(Cast<AWeightZone>(Actor));
     }
 
+
+    const float MyZ = GetActorLocation().Z; // 이 그리드 매니저의 Z 위치
+    const float ZThreshold = 150.0f;
+    
     TArray<AActor*> FoundLinks;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);
     TArray<APathLinkZone*> NavLinks;
     for (AActor* Actor : FoundLinks)
     {
-        NavLinks.Add(Cast<APathLinkZone>(Actor));
+        if (FMath::Abs(Actor->GetActorLocation().Z - MyZ) < ZThreshold)
+        {
+            // 3. 같은 층에 있는 PathLink만 NavLinks 배열에 추가
+            NavLinks.Add(Cast<APathLinkZone>(Actor));
+        }
     }
 
+    FCollisionQueryParams QueryParams;
+    QueryParams.AddIgnoredActor(this);
+    
+    APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+    if (PlayerPawn)
+    {
+        QueryParams.AddIgnoredActor(PlayerPawn);
+    }
+    AActor* SafeZoneActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
+    if (SafeZoneActor)
+    {
+        QueryParams.AddIgnoredActor(SafeZoneActor);
+    }
+    // ------------------------------------------------
+
+    // --- 2. 그리드 노드 기본 정보 생성 (장애물 & 가중치) ---
     for (int32 Y = 0; Y < GridSizeY; ++Y)
     {
         for (int32 X = 0; X < GridSizeX; ++X)
         {
             int32 Index = Y * GridSizeX + X;
+            FPathNode& Node = Grid[Index]; // 참조(&)로 직접 수정
+
             FVector WorldPoint = WorldBottomLeft
                 + FVector::ForwardVector * (X * NodeDiameter + NodeRadius)
                 + FVector::RightVector * (Y * NodeDiameter + NodeRadius);
 
             WorldPoint.Z = GetActorLocation().Z;
             
-            Grid[Index].WorldLocation = WorldPoint;
-            Grid[Index].GridIndex = FIntPoint(X, Y);
-
-            for (APathLinkZone* Link : NavLinks)
-            {
-                if (Link && FVector::DistSquared(Grid[Index].WorldLocation, Link->GetActorLocation()) < FMath::Square(NodeRadius))
-                {
-                    Grid[Index].LinkedActor = Link;
-                    Grid[Index].bIsObstacle = false; // 링크 지점은 장애물이 아니라고 보장
-                    break;
-                }
-            }
-
-            FCollisionQueryParams QueryParams;
-            QueryParams.AddIgnoredActor(this);
-
-            APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-            if (PlayerPawn)
-            {
-                QueryParams.AddIgnoredActor(PlayerPawn); // 플레이어 폰을 무시 목록에 추가
-            }
-
-            AActor* SafeZoneActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
-            if (SafeZoneActor)
-            {
-                QueryParams.AddIgnoredActor(SafeZoneActor); // SafetyZone도 무시 목록에 추가
-            }
+            Node.WorldLocation = WorldPoint;
+            Node.GridIndex = FIntPoint(X, Y);
+            Node.LinkedActor = nullptr; // 일단 초기화
+            Node.MovementWeight = 1.0f; // 기본 가중치로 초기화
 
             // 장애물 검사
             bool bHit = GetWorld()->OverlapAnyTestByObjectType(WorldPoint, FQuat::Identity, FCollisionObjectQueryParams(ObstacleObjectTypes), FCollisionShape::MakeSphere(NodeRadius), QueryParams);
-            Grid[Index].bIsObstacle = bHit;
+            Node.bIsObstacle = bHit;
 
+            // 가중치 적용
             if (!bHit)
             {
-                // 가중치 적용
                 for (AWeightZone* WeightActor : WeightActors)
                 {
                     if (WeightActor && WeightActor->GetWeightBox().IsInside(WorldPoint))
                     {
-                        Grid[Index].MovementWeight = WeightActor->MovementWeight;
-                        break; // 첫 번째로 찾은 가중치를 적용하고 중단
+                        Node.MovementWeight = WeightActor->MovementWeight;
+                        break;
                     }
                 }
             }
         }
     }
 
-    BlurObstaclePenalties(blurSize);
+    // --- 3. PathLinkZone 연결 (요청하신 부분) ---
+    // 모든 노드를 만든 '후에' 각 PathLink와 가장 가까운 노드 딱 1개만 찾습니다.
+    for (APathLinkZone* Link : NavLinks)
+    {
+        if (!Link) continue;
+
+        float MinDistSq = BIG_NUMBER;
+        FPathNode* ClosestNode = nullptr;
+
+        for (FPathNode& Node : Grid)
+        {
+            if (Node.bIsObstacle) continue; // 장애물 노드는 제외
+
+            float DistSq = FVector::DistSquared(Node.WorldLocation, Link->GetActorLocation());
+            if (DistSq < MinDistSq)
+            {
+                MinDistSq = DistSq;
+                ClosestNode = &Node;
+            }
+        }
+
+        // 가장 가까운 노드를 찾았으면, 해당 노드를 '환승역'으로 지정
+        if (ClosestNode)
+        {
+            ClosestNode->LinkedActor = Link;
+            ClosestNode->bIsObstacle = false; // 링크 지점은 확실하게 걸을 수 있도록 보장
+        }
+    }
+    // ------------------------------------------
+
+    BlurObstaclePenalties(3);
     bGridReady = true;
     UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
 }
