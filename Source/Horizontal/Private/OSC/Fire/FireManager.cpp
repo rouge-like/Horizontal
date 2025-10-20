@@ -13,6 +13,7 @@
 #include "CollisionQueryParams.h"
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
+#include "GameFramework/GameStateBase.h"
 #include "OSC/PlayerBaseState.h"
 #include "OSC/VFX/VFXManager.h"
 #include "OSC/VFX/VFXActor.h"
@@ -116,16 +117,6 @@ void AFireManager::Tick(float DeltaSeconds)
         if (Cell.State == EFireCellState::Igniting)
         {
             Cell.IgnitionTimeRemaining -= DeltaSeconds;
-         
-            APlayerBaseState* PBS = GetWorld()->GetFirstPlayerController()->GetPlayerState<APlayerBaseState>();
-            FVector Location = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-            const FBox Bounds = FBox::BuildAABB(Location, FVector(PBS->GetSize()));
-            const FBox Fire = FBox::BuildAABB(Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent);
-    
-            if (Bounds.Intersect(Fire))
-            {
-                PBS->AddFireTime(DeltaSeconds);
-            }
             
             if (Cell.IgnitionTimeRemaining <= 0)
             {
@@ -141,18 +132,6 @@ void AFireManager::Tick(float DeltaSeconds)
             {
                 SpreadFireFromCell(CellIndex);
                 NextActiveCells.Add(CellIndex);
-                
-                //TODO Player 충돌 판정
-                APlayerBaseState* PBS = GetWorld()->GetFirstPlayerController()->GetPlayerState<APlayerBaseState>();
-                FVector Location = GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation();
-                const FBox Bounds = FBox::BuildAABB(Location, FVector(PBS->GetSize()));
-                const FBox Fire = FBox::BuildAABB(Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent);
-
-                if (Bounds.Intersect(Fire))
-                {
-                    PBS->AddFireTime(DeltaSeconds * 2);
-                }
-
             }
             else
             {
@@ -163,6 +142,55 @@ void AFireManager::Tick(float DeltaSeconds)
     }
     
     ActiveCells = MoveTemp(NextActiveCells);
+
+    CheckPlayerInFire(DeltaSeconds);
+}
+
+void AFireManager::CheckPlayerInFire(float DeltaSeconds)
+{
+    for (uint64 i = 0; i < GetWorld()->GetGameState()->PlayerArray.Num(); i++)
+    {
+        APlayerState* PS = GetWorld()->GetGameState()->PlayerArray[i];
+        
+        if (!PS) continue;
+
+        APlayerController* PC = PS->GetOwner<APlayerController>();
+        if (!PC) continue;
+
+        APawn* Pawn = PC->GetPawn();
+        if (!Pawn) continue;
+        
+        APlayerBaseState* PBS = Cast<APlayerBaseState>(PS);
+        
+        const FVector PlayerLocation = Pawn->GetActorLocation();
+        const FVector PlayerExtent = FVector(PBS->GetSize());
+        const FBox PlayerBox = FBox::BuildAABB(PlayerLocation, PlayerExtent);
+
+        GEngine->AddOnScreenDebugMessage(i, 0, FColor::White, FString::Printf(TEXT("Player %d's Score : %f"), i, PBS->InFireTime));
+        for (int32 CellIndex : ActiveCells)
+        {
+            if (!Cells.IsValidIndex(CellIndex))
+                continue;
+
+            const FFireCell& Cell = Cells[CellIndex];
+            float Value = 1.0f;
+
+            if (Cell.State == EFireCellState::Burning )  Value = 2.0f;
+            else if (Cell.State == EFireCellState::Igniting) Value = 1.0f;
+            else continue;;
+
+            const FBox FireBox = FBox::BuildAABB(Cell.WorldCenter, Cell.CellExtent);
+
+            if (PlayerBox.Intersect(FireBox))
+            {
+                if (PBS)
+                {
+                    PBS->AddFireTime(DeltaSeconds * Value);
+                }
+                break;
+            }
+        }
+    }
 }
 
 AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellIndex, float DeltaSeconds)

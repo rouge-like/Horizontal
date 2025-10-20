@@ -103,6 +103,8 @@ protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
 
+    void CheckPlayerInFire(float DeltaSeconds);
+
     UFUNCTION(BlueprintCallable, Category="Fire|Cells")
     int32 FindCellIndexAtLocation(const FVector& WorldLocation) const;
 

@@ -18,6 +18,7 @@ void APlayerBaseState::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	if (!HasAuthority()) return;
+
 	
 	if (GetPlayerController()->IsLocalController())
 	{

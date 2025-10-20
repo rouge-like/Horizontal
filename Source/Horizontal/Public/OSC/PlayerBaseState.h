@@ -22,6 +22,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	float Size = 35;
 
+public:
 	UPROPERTY(EditDefaultsOnly)
 	float InFireTime = 0;
 
