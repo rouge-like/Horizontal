@@ -161,7 +161,7 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
     {
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
         const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-        DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+        //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
 #endif
         Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
         return Result;
@@ -196,7 +196,7 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCellRecursive(int32 CellI
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-    DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
+    //DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, false, 0.0f, 0, 1.0f);
 #endif
 
     if (!Result.bAnyBurning)
