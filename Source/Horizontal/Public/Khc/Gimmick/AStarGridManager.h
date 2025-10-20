@@ -116,6 +116,9 @@ public:
     // 매 프레임 호출, bDebugDrawGrid가 true일 때 디버그 시각화 담당
     virtual void Tick(float DeltaTime) override;
 
+    UPROPERTY(EditAnywhere, Category = "A* Grid")
+    int32 blurSize = 3;
+
 private:
     // 생성된 모든 FPathNode를 저장하는 배열. 길찾기 지도의 실체
     TArray<FPathNode> Grid;

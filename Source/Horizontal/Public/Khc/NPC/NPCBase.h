@@ -36,7 +36,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Replicated, Category = "NPC|AI")
 	TObjectPtr<ASafetyZone> TargetSafetyZone;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
-	class UWidgetComponent* InteractionUI;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NPC|Component")
+	// class UWidgetComponent* InteractionUI;
 
 };
