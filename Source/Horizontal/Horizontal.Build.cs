@@ -19,7 +19,9 @@ public class Horizontal : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
-			"Niagara"
+			"Niagara",
+			"OnlineSubsystem",
+			"OnlineSubsystemUtils" 
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

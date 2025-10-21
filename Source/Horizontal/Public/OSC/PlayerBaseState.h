@@ -9,6 +9,7 @@
 /**
  * 
  */
+class APlayerBase;
 UCLASS()
 class HORIZONTAL_API APlayerBaseState : public APlayerState
 {
@@ -22,11 +23,28 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	float Size = 35;
 
+	UPROPERTY()
+	APlayerBase* PlayerBase;
+	
 public:
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(VisibleAnywhere)
 	float InFireTime = 0;
+	
+	UPROPERTY(VisibleAnywhere)
+	float RunningTime = 0;
 
+	UPROPERTY(VisibleAnywhere)
+	float NotCrouchingTime = 0;
+
+	UPROPERTY(VisibleAnywhere)
+	float NotCoveringMouth = 0;
+
+	UPROPERTY(VisibleAnywhere)
+	int32 WrongCount = 0;
 public:
+	void SetPawn(APawn* Pawn);
 	float GetSize() const { return Size; };
+	float GetSum() const {return InFireTime + RunningTime + NotCrouchingTime + NotCoveringMouth + WrongCount; };
 	void AddFireTime(float DeltaTime);
+	void AddWrongCount(int32 Value);
 };

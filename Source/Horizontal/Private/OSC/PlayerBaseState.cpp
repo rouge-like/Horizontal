@@ -3,6 +3,8 @@
 
 #include "OSC/PlayerBaseState.h"
 
+#include "OSC/PlayerBase.h"
+
 APlayerBaseState::APlayerBaseState()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -18,15 +20,22 @@ void APlayerBaseState::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	
 	if (!HasAuthority()) return;
+	if (!PlayerBase) return;
+	if (PlayerBase->IsSprinting()) RunningTime += DeltaTime;
+	if (!PlayerBase->IsCoveringMouth()) NotCoveringMouth += DeltaTime;
+}
 
-	
-	if (GetPlayerController()->IsLocalController())
-	{
-		GEngine->AddOnScreenDebugMessage(0, 0, FColor::Blue, FString::FormatAsNumber(InFireTime));
-	}
+void APlayerBaseState::SetPawn(APawn* Pawn)
+{
+	PlayerBase = Cast<APlayerBase>(Pawn);
 }
 
 void APlayerBaseState::AddFireTime(float DeltaTime)
 {
 	InFireTime += DeltaTime;
+}
+
+void APlayerBaseState::AddWrongCount(int32 Value)
+{
+	WrongCount += Value;
 }

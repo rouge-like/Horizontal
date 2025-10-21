@@ -1,9 +1,8 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "OSC/MainGameMode.h"
-
-#include <Khc/InteractionObject/InteractableObjectBase.h>
+#include "OSC/Game/MainGameMode.h"
+#include "Khc/InteractionObject/InteractableObjectBase.h"
 
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
