@@ -313,7 +313,7 @@ void AAStarGridManager::CreateGrid()
 
 
     const float MyZ = GetActorLocation().Z; // 이 그리드 매니저의 Z 위치
-    const float ZThreshold = 150.0f;
+    const float ZThreshold = 50.0f;
     
     TArray<AActor*> FoundLinks;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);

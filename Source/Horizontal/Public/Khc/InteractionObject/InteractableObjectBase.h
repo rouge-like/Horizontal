@@ -20,6 +20,9 @@ public:
 	UPROPERTY(Replicated)
 	bool bHasBeenInteractedWith;
 
+	UPROPERTY(Replicated)
+	bool bIsMove = false;
+
 	void BindToPlayerController(APlayerController* PC);
 	
 protected:
@@ -45,6 +48,7 @@ protected:
 	// 상호작용 로직을 담당하는 범용 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UObjectInteractionComponent> InteractionComponent;
+
 
 
 };

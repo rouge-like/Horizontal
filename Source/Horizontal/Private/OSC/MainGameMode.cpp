@@ -7,6 +7,7 @@
 
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
+#include "Khc/NPC/NPCBase.h"
 #include "Kismet/GameplayStatics.h"
 
 AMainGameMode::AMainGameMode()
@@ -32,6 +33,15 @@ void AMainGameMode::StartPlay()
 		}
 	}
 
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANPCBase::StaticClass(), FoundActors);
+	for(AActor* Actor : FoundActors)
+	{
+		if(ANPCBase* NPC = Cast<ANPCBase>(Actor))
+		{
+			AllNPCsInLevel.Add(NPC); // AllNPCsInLevel 변수를 헤더에 추가해야 함
+		}
+	}
+	
 	for (APlayerState* PS : GetWorld()->GetGameState()->PlayerArray)
 	{
 		if (APlayerController* PC = PS->GetPlayerController())
@@ -39,6 +49,11 @@ void AMainGameMode::StartPlay()
 			for (AInteractableObjectBase* Interactable : AllInteractableObjectsInLevel)
 			{
 				Interactable->BindToPlayerController(PC);
+			}
+
+			for (ANPCBase* NPC : AllNPCsInLevel)
+			{
+				NPC->BindToPlayerController(PC);
 			}
 			UE_LOG(LogTemp, Log, TEXT("StartPlay: Bound events for existing player '%s'."), *PC->GetName());
 		}
@@ -55,6 +70,14 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 			Interactable->BindToPlayerController(NewPlayer);
 		}
 	}
-    
+
+	for (ANPCBase* NPC : AllNPCsInLevel)
+	{
+		if (NPC)
+		{
+			NPC->BindToPlayerController(NewPlayer);
+		}
+	}
+	
 	UE_LOG(LogTemp, Log, TEXT("A new player '%s' has logged in. Bound events to %d interactable objects."), *NewPlayer->GetName(), AllInteractableObjectsInLevel.Num());
 }

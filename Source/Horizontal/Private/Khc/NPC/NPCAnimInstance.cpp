@@ -5,6 +5,7 @@
 
 #include "GameFramework/PawnMovementComponent.h"
 #include "Khc/NPC/NPCBase.h"
+#include "Khc/NPC/Component/NPCInteractionComponent.h"
 
 void UNPCAnimInstance::NativeBeginPlay()
 {
@@ -19,5 +20,6 @@ void UNPCAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (me)
 	{
 		speed = me->GetMovementComponent()->Velocity.Length();
+		bPlayStartAnimation = me->InteractionComp->bIsInteractable;
 	}
 }

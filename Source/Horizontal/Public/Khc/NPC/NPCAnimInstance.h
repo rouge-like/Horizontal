@@ -21,4 +21,6 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	float speed = 0;
+	UPROPERTY(BlueprintReadOnly)
+	bool bPlayStartAnimation = true;
 };

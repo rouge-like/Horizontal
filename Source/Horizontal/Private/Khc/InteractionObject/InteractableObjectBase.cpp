@@ -3,6 +3,7 @@
 
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
+#include "CborTypes.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
@@ -17,18 +18,19 @@ AInteractableObjectBase::AInteractableObjectBase()
 	PrimaryActorTick.bCanEverTick = false;
 
 	bReplicates = true;
+	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
+	InteractionComponent->SphereComp->SetSphereRadius(100.f);
+	RootComponent = InteractionComponent->SphereComp;
+	InteractionComponent->InteractionUI->SetupAttachment(InteractionComponent->SphereComp);
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	MeshComponent->SetupAttachment(RootComponent);
 
 	// 기본적으로 플레이어의 라인 트레이스(Visibility 채널)에 감지되도록 콜리전 설정
 	MeshComponent->SetCollisionObjectType(ECC_WorldStatic);
 	MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
 
 	// 2. 상호작용 컴포넌트 생성 (논리적인 컴포넌트라 Attachment 불필요)
-	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
-	InteractionComponent->SphereComp->SetupAttachment(RootComponent);
-	InteractionComponent->SphereComp->SetSphereRadius(100.f);
 
 	// 3. UI 위젯 컴포넌트 생성 및 설정
 	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
@@ -42,6 +44,7 @@ void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AInteractableObjectBase, bHasBeenInteractedWith);
+	DOREPLIFETIME(AInteractableObjectBase, bIsMove);
 }
 
 void AInteractableObjectBase::BindToPlayerController(APlayerController* PC)
@@ -99,9 +102,28 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
+	else if (EventTag == "OpenDoor")
+	{
+		PrimaryActorTick.bCanEverTick = true;
+		bIsMove = true;
+		//SetActorRotation(FRotator(0.000000, -140.000000,0.000000));
+	}
 }
 
 void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (bIsMove)
+	{
+		float target = -140;
+
+		float p0 = GetActorRotation().Yaw;
+		float currentP = p0 - DeltaTime * 10;
+		if (currentP < target)
+		{
+			bIsMove = false;
+			PrimaryActorTick.bCanEverTick = false;
+		}
+		SetActorRotation(FRotator(0.000000, currentP,0.000000));
+	}
 }
