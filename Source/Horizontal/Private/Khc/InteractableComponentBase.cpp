@@ -11,6 +11,12 @@ UInteractableComponentBase::UInteractableComponentBase()
 	SetIsReplicatedByDefault(true);
 	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
 
+	SphereComp->SetCollisionProfileName(TEXT("Custom"));
+	SphereComp->SetCollisionObjectType(ECC_WorldDynamic);
+	SphereComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+	SphereComp->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	
+	
 	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
 	InteractionUI->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 바라보도록 설정
 	InteractionUI->SetVisibility(false);

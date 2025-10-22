@@ -3,6 +3,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Pawn.h"
 #include "DrawDebugHelpers.h"
+#include "Khc/NPC/NPCBase.h"
+#include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
 
@@ -123,5 +125,6 @@ void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
     {
         bIsMoving = false;
         UE_LOG(LogTemp, Warning, TEXT("Path to destination could not be found!"));
+        //Cast<ANPCBase>(GetOwner())->InteractionComp->SetInteractable(true);
     }
 }
