@@ -3,6 +3,7 @@
 
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
+#include "CborTypes.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
@@ -14,21 +15,22 @@
 // Sets default values
 AInteractableObjectBase::AInteractableObjectBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
+	PrimaryActorTick.bCanEverTick = true;
+	
 	bReplicates = true;
+	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
+	InteractionComponent->SphereComp->SetSphereRadius(100.f);
+	RootComponent = InteractionComponent->SphereComp;
+	InteractionComponent->InteractionUI->SetupAttachment(InteractionComponent->SphereComp);
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
-	RootComponent = MeshComponent;
+	MeshComponent->SetupAttachment(RootComponent);
 
 	// 기본적으로 플레이어의 라인 트레이스(Visibility 채널)에 감지되도록 콜리전 설정
 	MeshComponent->SetCollisionObjectType(ECC_WorldStatic);
 	MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
 
 	// 2. 상호작용 컴포넌트 생성 (논리적인 컴포넌트라 Attachment 불필요)
-	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
-	InteractionComponent->SphereComp->SetupAttachment(RootComponent);
-	InteractionComponent->SphereComp->SetSphereRadius(100.f);
 
 	// 3. UI 위젯 컴포넌트 생성 및 설정
 	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
@@ -99,9 +101,37 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
+	else if (EventTag == "OpenDoor")
+	{
+		bIsMove = true; 
+		OnRep_IsMove();
+	}
+}
+
+void AInteractableObjectBase::OnRep_IsMove()
+{
+	if (bIsMove)
+	{
+		// 클라이언트에서도 Tick 로직을 실행할 수 있도록 활성화합니다.
+		PrimaryActorTick.bCanEverTick = true;
+	}
 }
 
 void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (bIsMove)
+	{
+		const float TargetYaw = -140.0f;
+		const float RotationSpeed = 100.0f; 
+		float CurrentYaw = GetActorRotation().Yaw;
+		float NewYaw = FMath::FInterpConstantTo(CurrentYaw, TargetYaw, DeltaTime, RotationSpeed);
+
+		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
+
+		if (FMath::IsNearlyEqual(NewYaw, TargetYaw))
+		{
+			bIsMove = false; // 이동 완료
+		}
+	}
 }

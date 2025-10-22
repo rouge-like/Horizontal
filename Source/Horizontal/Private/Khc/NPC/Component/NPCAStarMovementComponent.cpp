@@ -74,17 +74,20 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
         }
 
         // 2. 회전: 다음 경유지를 향해 부드럽게 몸을 돌림
-        FVector DirectionToWaypoint = (Waypoint - CurrentLocation).GetSafeNormal();
-        FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(CurrentLocation, Waypoint);
-        
-        // Z축 회전은 필요 없으므로 Yaw 값만 사용
-        FRotator CurrentRotation = OwnerPawn->GetActorRotation();
-        FRotator SmoothedRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 5.0f); // 5.0f는 회전 속도 (조절 가능)
+        // FVector DirectionToWaypoint = (Waypoint - CurrentLocation).GetSafeNormal();
+        // FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(CurrentLocation, Waypoint);
+        //
+        // // Z축 회전은 필요 없으므로 Yaw 값만 사용
+        // FRotator CurrentRotation = OwnerPawn->GetActorRotation();
+        // FRotator SmoothedRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 5.0f); // 5.0f는 회전 속도 (조절 가능)
+        //
+        // OwnerPawn->SetActorRotation(FRotator(0.f, SmoothedRotation.Yaw, 0.f));
+        //
+        // // 3. 전진: 현재 캐릭터가 바라보는 '앞 방향'으로 이동 입력을 줌
+        // OwnerPawn->AddMovementInput(OwnerPawn->GetActorForwardVector());
 
-        OwnerPawn->SetActorRotation(FRotator(0.f, SmoothedRotation.Yaw, 0.f));
-        
-        // 3. 전진: 현재 캐릭터가 바라보는 '앞 방향'으로 이동 입력을 줌
-        OwnerPawn->AddMovementInput(OwnerPawn->GetActorForwardVector());
+        FVector Direction = (Waypoint - CurrentLocation).GetSafeNormal();
+        OwnerPawn->AddMovementInput(Direction);
     }
     else if(bIsMoving) // 경로가 끝났지만 아직 이동 중 플래그가 켜져 있다면
     {
@@ -109,9 +112,9 @@ void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
     CurrentPathIndex = 0;
 
     // 이제 GridManager가 아닌, NavigationManager의 FindPath를 직접 호출합니다.
-    bool bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
+    float bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
 
-    if (bPathFound)
+    if (bPathFound > 0)
     {
         bIsMoving = true;
         UE_LOG(LogTemp, Log, TEXT("New path found with %d waypoints."), CurrentPath.Num());

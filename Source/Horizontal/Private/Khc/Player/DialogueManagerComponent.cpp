@@ -92,16 +92,16 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			}
 
 			// 이동 전에 그리드를 다시 만들도록 요청
-			AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
-			if (NavManager)
-			{
-				AAStarGridManager* GridManager = NavManager->GetManagerForLocation(NPC->GetActorLocation());
-				if (GridManager)
-				{
-					GridManager->RebuildGrid();
-				}
-			}
-			NPC->FSMComp->SetState(ENPCState::Move);
+			// AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
+			// if (NavManager)
+			// {
+			// 	AAStarGridManager* GridManager = NavManager->GetManagerForLocation(NPC->GetActorLocation());
+			// 	if (GridManager)
+			// 	{
+			// 		GridManager->RebuildGrid();
+			// 	}
+			// }
+			// NPC->FSMComp->SetState(ENPCState::Move);
 		}
 	}
 

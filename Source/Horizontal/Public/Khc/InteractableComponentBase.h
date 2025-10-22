@@ -51,10 +51,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Interaction")
 	TSubclassOf<class UUserWidget> InteractionWidgetClass;
 
-protected:
-	/** 서버에서만 변경되고, 모든 클라이언트로 복제되는 '상호작용 가능 여부' 상태 변수. */
 	UPROPERTY(Replicated)
 	bool bIsInteractable = true;
+protected:
+	/** 서버에서만 변경되고, 모든 클라이언트로 복제되는 '상호작용 가능 여부' 상태 변수. */
 
 	UFUNCTION()
 	void OnRep_IsInteractable();

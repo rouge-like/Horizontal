@@ -12,7 +12,6 @@ UInteractableComponentBase::UInteractableComponentBase()
 	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionSphere"));
 
 	InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
-	InteractionUI->SetupAttachment(SphereComp); // SphereComp에 부착
 	InteractionUI->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 바라보도록 설정
 	InteractionUI->SetVisibility(false);
 }

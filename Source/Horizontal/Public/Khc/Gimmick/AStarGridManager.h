@@ -87,7 +87,7 @@ public:
     TArray<TEnumAsByte<EObjectTypeQuery>> ObstacleObjectTypes;
 
     // A* 알고리즘을 실행하여 최단 경로를 찾는 메인 함수
-    bool FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath);
+    float FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath);
 
     // 그리드 생성이 완료되었는지 외부에서 확인하는 함수
     bool IsGridReady() const { return bGridReady; }
