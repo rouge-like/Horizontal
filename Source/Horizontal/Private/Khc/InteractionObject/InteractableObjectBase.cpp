@@ -15,8 +15,8 @@
 // Sets default values
 AInteractableObjectBase::AInteractableObjectBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
-
+	PrimaryActorTick.bCanEverTick = true;
+	
 	bReplicates = true;
 	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
 	InteractionComponent->SphereComp->SetSphereRadius(100.f);
@@ -44,7 +44,6 @@ void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AInteractableObjectBase, bHasBeenInteractedWith);
-	DOREPLIFETIME(AInteractableObjectBase, bIsMove);
 }
 
 void AInteractableObjectBase::BindToPlayerController(APlayerController* PC)
@@ -104,9 +103,17 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	}
 	else if (EventTag == "OpenDoor")
 	{
+		bIsMove = true; 
+		OnRep_IsMove();
+	}
+}
+
+void AInteractableObjectBase::OnRep_IsMove()
+{
+	if (bIsMove)
+	{
+		// 클라이언트에서도 Tick 로직을 실행할 수 있도록 활성화합니다.
 		PrimaryActorTick.bCanEverTick = true;
-		bIsMove = true;
-		//SetActorRotation(FRotator(0.000000, -140.000000,0.000000));
 	}
 }
 
@@ -115,15 +122,16 @@ void AInteractableObjectBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (bIsMove)
 	{
-		float target = -140;
+		const float TargetYaw = -140.0f;
+		const float RotationSpeed = 100.0f; 
+		float CurrentYaw = GetActorRotation().Yaw;
+		float NewYaw = FMath::FInterpConstantTo(CurrentYaw, TargetYaw, DeltaTime, RotationSpeed);
 
-		float p0 = GetActorRotation().Yaw;
-		float currentP = p0 - DeltaTime * 10;
-		if (currentP < target)
+		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
+
+		if (FMath::IsNearlyEqual(NewYaw, TargetYaw))
 		{
-			bIsMove = false;
-			PrimaryActorTick.bCanEverTick = false;
+			bIsMove = false; // 이동 완료
 		}
-		SetActorRotation(FRotator(0.000000, currentP,0.000000));
 	}
 }

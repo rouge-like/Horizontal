@@ -112,9 +112,9 @@ void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
     CurrentPathIndex = 0;
 
     // 이제 GridManager가 아닌, NavigationManager의 FindPath를 직접 호출합니다.
-    bool bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
+    float bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
 
-    if (bPathFound)
+    if (bPathFound > 0)
     {
         bIsMoving = true;
         UE_LOG(LogTemp, Log, TEXT("New path found with %d waypoints."), CurrentPath.Num());

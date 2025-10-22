@@ -20,9 +20,6 @@ public:
 	UPROPERTY(Replicated)
 	bool bHasBeenInteractedWith;
 
-	UPROPERTY(Replicated)
-	bool bIsMove = false;
-
 	void BindToPlayerController(APlayerController* PC);
 	
 protected:
@@ -31,6 +28,12 @@ protected:
 
 	UFUNCTION()
 	void OnDialogueEventReceived(FName EventTag, AActor* InteractableActor);
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsMove)
+	bool bIsMove;
+
+	UFUNCTION()
+	void OnRep_IsMove();
 
 public:
 	// Called every frame

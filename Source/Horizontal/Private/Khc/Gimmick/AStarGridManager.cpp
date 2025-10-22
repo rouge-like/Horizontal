@@ -6,7 +6,6 @@
 #include <Kismet/GameplayStatics.h>
 
 #include "Khc/Gimmick/AStarNavigationManager.h"
-#include "Khc/InteractionObject/InteractableObstacleObjectBase.h"
 
 // Sets default values
 AAStarGridManager::AAStarGridManager()
@@ -14,7 +13,7 @@ AAStarGridManager::AAStarGridManager()
     PrimaryActorTick.bCanEverTick = true;
 }
 
-bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath)
+float AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath)
 {
     FPathNode* StartNode = GetNodeFromWorldLocation(StartLocation);
     FPathNode* TargetNode = GetNodeFromWorldLocation(TargetLocation);
@@ -64,7 +63,7 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
         if (CurrentNode == TargetNode)
         {
             RetracePath(StartNode, TargetNode, OutPath);
-            return true;
+            return CurrentNode->GCost;
         }
 
         TArray<FPathNode*> Neighbors;
@@ -95,7 +94,7 @@ bool AAStarGridManager::FindPath(FVector StartLocation, FVector TargetLocation, 
             }
         }
     }
-    return false; // OpenList가 비었는데 목표를 못 찾았으면 길찾기 실패
+    return -1.0f; // OpenList가 비었는데 목표를 못 찾았으면 길찾기 실패
 }
 
 void AAStarGridManager::BlurObstaclePenalties(int32 BlurSize)
@@ -161,139 +160,47 @@ void AAStarGridManager::BeginPlay()
     if (!HasAuthority()) return;
 
     CreateGrid();
-
-    // TArray<AActor*> FoundObstacles;
-    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInteractableObstacleObjectBase::StaticClass(), FoundObstacles);
-    // for (AActor* Actor : FoundObstacles)
-    // {
-    //     AInteractableObstacleObjectBase* Obstacle = Cast<AInteractableObstacleObjectBase>(Actor);
-    //     if (Obstacle)
-    //     {
-    //         // 장애물의 상태가 바뀔 때마다 UpdateNodesInBounds 함수를 호출하도록 연결(바인딩)합니다.
-    //         Obstacle->OnStateChanged.AddDynamic(this, &AAStarGridManager::UpdateNodesInBounds);
-    //     }
-    // }
 }
 
 void AAStarGridManager::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (bDebugDrawGrid && bGridReady)
-    {
-        const float MaxWeight = 10.0f; // 최대 가중치 값 (색상 보간용)
-
-        for (const FPathNode& Node : Grid)
-        {
-            FColor NodeColor;
-            
-            if (Node.LinkedActor) // <-- 이 if문 추가
-            {
-                NodeColor = FColor::Magenta; // 환승역 노드는 마젠타(자홍색)으로 표시
-            }
-            else if (Node.bIsObstacle)
-            {
-                NodeColor = FColor(100, 0, 0); // 장애물 노드는 어두운 빨간색
-            }
-            else
-            {
-                // 가중치에 따라 노란색에서 빨간색으로 색상 보간
-                // 1.0에 가까우면 노란색, MaxWeight에 가까우면 빨간색
-                float LerpAlpha = FMath::Clamp((Node.MovementWeight - 1.0f) / FMath::Max(MaxWeight - 1.0f, 1.0f), 0.0f, 1.0f);
-                NodeColor = FLinearColor::LerpUsingHSV(FLinearColor::Yellow, FLinearColor::Red, LerpAlpha).ToFColor(true);
-            }
-
-            DrawDebugSphere(GetWorld(), Node.WorldLocation, NodeRadius * 0.2f, 6, NodeColor, false, -1.f, 0, 1.f);
-        }
-    }
+    // if (bDebugDrawGrid && bGridReady)
+    // {
+    //     const float MaxWeight = 10.0f; // 최대 가중치 값 (색상 보간용)
+    //
+    //     for (const FPathNode& Node : Grid)
+    //     {
+    //         FColor NodeColor;
+    //         
+    //         if (Node.LinkedActor) // <-- 이 if문 추가
+    //         {
+    //             NodeColor = FColor::Magenta; // 환승역 노드는 마젠타(자홍색)으로 표시
+    //         }
+    //         else if (Node.bIsObstacle)
+    //         {
+    //             NodeColor = FColor(100, 0, 0); // 장애물 노드는 어두운 빨간색
+    //         }
+    //         else
+    //         {
+    //             // 가중치에 따라 노란색에서 빨간색으로 색상 보간
+    //             // 1.0에 가까우면 노란색, MaxWeight에 가까우면 빨간색
+    //             float LerpAlpha = FMath::Clamp((Node.MovementWeight - 1.0f) / FMath::Max(MaxWeight - 1.0f, 1.0f), 0.0f, 1.0f);
+    //             NodeColor = FLinearColor::LerpUsingHSV(FLinearColor::Yellow, FLinearColor::Red, LerpAlpha).ToFColor(true);
+    //         }
+    //
+    //         DrawDebugSphere(GetWorld(), Node.WorldLocation, NodeRadius * 0.2f, 6, NodeColor, false, -1.f, 0, 1.f);
+    //     }
+    // }
 }
 
 void AAStarGridManager::CreateGrid()
 {
-    // NodeDiameter = NodeRadius * 2;
-    // GridSizeX = FMath::RoundToInt(GridWorldSize.X / NodeDiameter);
-    // GridSizeY = FMath::RoundToInt(GridWorldSize.Y / NodeDiameter);
-    // Grid.SetNum(GridSizeX * GridSizeY);
-    //
-    // FVector WorldBottomLeft = GetActorLocation() - FVector::ForwardVector * GridWorldSize.X / 2 - FVector::RightVector * GridWorldSize.Y / 2;
-    //
-    // TArray<AActor*> FoundActors;
-    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), AWeightZone::StaticClass(), FoundActors);
-    // TArray<AWeightZone*> WeightActors;
-    // for (AActor* Actor : FoundActors)
-    // {
-    //     WeightActors.Add(Cast<AWeightZone>(Actor));
-    // }
-    //
-    // TArray<AActor*> FoundLinks;
-    // UGameplayStatics::GetAllActorsOfClass(GetWorld(), APathLinkZone::StaticClass(), FoundLinks);
-    // TArray<APathLinkZone*> NavLinks;
-    // for (AActor* Actor : FoundLinks)
-    // {
-    //     NavLinks.Add(Cast<APathLinkZone>(Actor));
-    // }
-    //
-    // for (int32 Y = 0; Y < GridSizeY; ++Y)
-    // {
-    //     for (int32 X = 0; X < GridSizeX; ++X)
-    //     {
-    //         int32 Index = Y * GridSizeX + X;
-    //         FVector WorldPoint = WorldBottomLeft
-    //             + FVector::ForwardVector * (X * NodeDiameter + NodeRadius)
-    //             + FVector::RightVector * (Y * NodeDiameter + NodeRadius);
-    //
-    //         WorldPoint.Z = GetActorLocation().Z;
-    //         
-    //         Grid[Index].WorldLocation = WorldPoint;
-    //         Grid[Index].GridIndex = FIntPoint(X, Y);
-    //
-    //         for (APathLinkZone* Link : NavLinks)
-    //         {
-    //             if (Link && FVector::DistSquared(Grid[Index].WorldLocation, Link->GetActorLocation()) < FMath::Square(NodeRadius))
-    //             {
-    //                 Grid[Index].LinkedActor = Link;
-    //                 Grid[Index].bIsObstacle = false; // 링크 지점은 장애물이 아니라고 보장
-    //                 break;
-    //             }
-    //         }
-    //
-    //         FCollisionQueryParams QueryParams;
-    //         QueryParams.AddIgnoredActor(this);
-    //
-    //         APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-    //         if (PlayerPawn)
-    //         {
-    //             QueryParams.AddIgnoredActor(PlayerPawn); // 플레이어 폰을 무시 목록에 추가
-    //         }
-    //
-    //         AActor* SafeZoneActor = UGameplayStatics::GetActorOfClass(GetWorld(), ASafetyZone::StaticClass());
-    //         if (SafeZoneActor)
-    //         {
-    //             QueryParams.AddIgnoredActor(SafeZoneActor); // SafetyZone도 무시 목록에 추가
-    //         }
-    //
-    //         // 장애물 검사
-    //         bool bHit = GetWorld()->OverlapAnyTestByObjectType(WorldPoint, FQuat::Identity, FCollisionObjectQueryParams(ObstacleObjectTypes), FCollisionShape::MakeSphere(NodeRadius), QueryParams);
-    //         Grid[Index].bIsObstacle = bHit;
-    //
-    //         if (!bHit)
-    //         {
-    //             // 가중치 적용
-    //             for (AWeightZone* WeightActor : WeightActors)
-    //             {
-    //                 if (WeightActor && WeightActor->GetWeightBox().IsInside(WorldPoint))
-    //                 {
-    //                     Grid[Index].MovementWeight = WeightActor->MovementWeight;
-    //                     break; // 첫 번째로 찾은 가중치를 적용하고 중단
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    //
-    // BlurObstaclePenalties(blurSize);
-    // bGridReady = true;
-    // UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
+    if (bDebugDrawGrid)
+    {
+        FlushPersistentDebugLines(GetWorld());
+    }
 
     NodeDiameter = NodeRadius * 2;
     GridSizeX = FMath::RoundToInt(GridWorldSize.X / NodeDiameter);
@@ -413,6 +320,44 @@ void AAStarGridManager::CreateGrid()
     BlurObstaclePenalties(3);
     bGridReady = true;
     UE_LOG(LogTemp, Log, TEXT("A* Grid is ready."));
+
+    if (bDebugDrawGrid)
+    {
+        const float MaxWeight = 10.0f;
+        const float DebugLifeTime = 3600.0f; // 1시간 (사실상 영구적)
+
+        for (const FPathNode& Node : Grid)
+        {
+            FColor NodeColor;
+            
+            if (Node.LinkedActor)
+            {
+                NodeColor = FColor::Magenta;
+            }
+            else if (Node.bIsObstacle)
+            {
+                NodeColor = FColor(100, 0, 0);
+            }
+            else
+            {
+                float LerpAlpha = FMath::Clamp((Node.MovementWeight - 1.0f) / FMath::Max(MaxWeight - 1.0f, 1.0f), 0.0f, 1.0f);
+                NodeColor = FLinearColor::LerpUsingHSV(FLinearColor::Yellow, FLinearColor::Red, LerpAlpha).ToFColor(true);
+            }
+
+            // DrawDebugSphere의 파라미터를 수정합니다.
+            DrawDebugSphere(
+                GetWorld(),
+                Node.WorldLocation,
+                NodeRadius * 0.2f,
+                6,
+                NodeColor,
+                false,           // bPersistentLines (false여도 LifeTime이 있으면 유지됨)
+                DebugLifeTime,   // LifeTime: -1.f -> 3600.f 로 변경
+                0,
+                1.f
+            );
+        }
+    }
 }
 
 FPathNode* AAStarGridManager::GetNodeFromWorldLocation(FVector WorldLocation)
