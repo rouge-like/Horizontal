@@ -35,6 +35,9 @@ protected:
 
 	UPROPERTY()
 	AStartGameMode* StartGameMode;
+
+	UFUNCTION()
+	void OnSetDisplayName(const FText& Text);
 public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateRoomList(const TArray<FString>& RoomNames);

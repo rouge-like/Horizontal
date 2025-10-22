@@ -3,27 +3,39 @@
 
 #include "OSC/Game/LobbyGameMode.h"
 
-ALobbyGameMode::ALobbyGameMode()
+#include "OnlineSessionSettings.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
+#include "OSC/LobbyPlayerController.h"
+#include "OnlineSubsystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSubsystemUtils.h"
+
+void ALobbyGameMode::BeginPlay()
 {
-	PrimaryActorTick.bCanEverTick = true;
-}
-
-void ALobbyGameMode::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
-	{
-		APlayerController* PC = Iterator->Get();
-		if (PC)
-		{
-			UE_LOG(LogTemp, Log, TEXT("Found PlayerController: %s"), *PC->GetName());
-		}
-	}
-
+	Super::BeginPlay();
 }
 
 void ALobbyGameMode::StartGame()
 {
 	GetWorld()->ServerTravel(URL);
+}
+
+void ALobbyGameMode::OnJoinedPlayer()
+{
+	int32 PlayerCount = GameState->PlayerArray.Num();
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		if (PS)
+		{
+			ALobbyPlayerController* LPC = Cast<ALobbyPlayerController>(PS->GetPlayerController());
+			if (IsValid(LPC))
+			{
+				if (LPC->IsLocalController())
+					LPC->SetPlayerCount(PlayerCount);
+				else
+					LPC->ClientSetPlayerCount(PlayerCount);
+			}
+		}
+	}
 }

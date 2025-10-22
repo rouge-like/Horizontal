@@ -16,6 +16,13 @@ void UStartMainUI::NativeOnInitialized()
 	StartGameMode = Cast<AStartGameMode>(GetWorld()->GetAuthGameMode());
 	RefreshButton->OnClicked.AddDynamic(this, &UStartMainUI::RefreshRoomList);
 	CreateRoomButton->OnClicked.AddDynamic(this, &UStartMainUI::CreateRoom);
+
+	RoomNameTextBox->OnTextChanged.AddDynamic(this, &UStartMainUI::OnSetDisplayName);
+}
+
+void UStartMainUI::OnSetDisplayName(const FText& Text)
+{
+	CreateRoomButton->SetIsEnabled(!Text.IsEmpty());
 }
 
 void UStartMainUI::UpdateRoomList(const TArray<FString>& RoomNames)
@@ -28,12 +35,16 @@ void UStartMainUI::UpdateRoomList(const TArray<FString>& RoomNames)
 		EntryObject->DisplayName = DisplayName;
 		RoomList->AddItem(EntryObject);
 	}
+
+	RefreshButton->SetIsEnabled(true);
 }
 
 void UStartMainUI::RefreshRoomList()
 {
 	if (IsValid(StartGameMode))
 		StartGameMode->FindOtherSessions();
+
+	RefreshButton->SetIsEnabled(false);
 }
 
 void UStartMainUI::CreateRoom()

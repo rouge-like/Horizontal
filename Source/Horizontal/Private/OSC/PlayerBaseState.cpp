@@ -21,6 +21,7 @@ void APlayerBaseState::Tick(float DeltaTime)
 	
 	if (!HasAuthority()) return;
 	if (!PlayerBase) return;
+	PlayTime += DeltaTime;
 	if (PlayerBase->IsSprinting()) RunningTime += DeltaTime;
 	if (!PlayerBase->IsCoveringMouth()) NotCoveringMouth += DeltaTime;
 }

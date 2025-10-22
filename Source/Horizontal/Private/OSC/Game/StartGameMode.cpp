@@ -7,6 +7,7 @@
 #include "OnlineSessionSettings.h"
 #include "Blueprint/UserWidget.h"
 #include "Online/OnlineSessionNames.h"
+#include "OSC/Game/BaseGameInstance.h"
 #include "OSC/UI/RoomObject.h"
 #include "OSC/UI/StartMainUI.h"
 
@@ -35,8 +36,6 @@ void AStartGameMode::BeginPlay()
 		MainUI = CreateWidget<UStartMainUI>(GetWorld(), MainUIClass);
 		MainUI->AddToViewport();
 	}
-
-	GConfig->SetBool(TEXT("/Script/Engine.Engine"), TEXT("net.AllowPIESeamlessTravel"), true, GEngineIni);
 }
 
 void AStartGameMode::CreateMySession(FString DisplayName, int32 PlayerCount)
@@ -55,6 +54,10 @@ void AStartGameMode::CreateMySession(FString DisplayName, int32 PlayerCount)
 	SessionSettings.bShouldAdvertise = true;
 	SessionSettings.NumPublicConnections = PlayerCount;
 	SessionSettings.Set(FName("DP_NAME"), DisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	UBaseGameInstance* BGI = Cast<UBaseGameInstance>(GetGameInstance());
+	if (IsValid(BGI))
+		BGI->SetDisplayName(DisplayName);
 	
 	FUniqueNetIdPtr NetId = GetWorld()->GetFirstLocalPlayerFromController()->GetUniqueNetIdForPlatformUser().GetUniqueNetId();
 	
@@ -133,7 +136,10 @@ void AStartGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionComp
 	{
 		FString SelectedURL;
 		SessionInterface->GetResolvedConnectString(SessionName, SelectedURL);
-		UE_LOG(LogTemp, Warning, TEXT("URL [%s]"), *SelectedURL);
+		UE_LOG(LogTemp, Warning, TEXT("URL [%s] %s"), *SelectedURL, *SessionName.ToString());
+		UBaseGameInstance* BGI = Cast<UBaseGameInstance>(GetGameInstance());
+		if (IsValid(BGI))
+			BGI->SetDisplayName(FString(SessionName.ToString()));
 
 		APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
 		PlayerController->ClientTravel(SelectedURL, TRAVEL_Absolute);

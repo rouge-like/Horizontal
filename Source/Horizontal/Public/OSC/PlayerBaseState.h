@@ -28,6 +28,9 @@ protected:
 	
 public:
 	UPROPERTY(VisibleAnywhere)
+	float PlayTime = 0;
+	
+	UPROPERTY(VisibleAnywhere)
 	float InFireTime = 0;
 	
 	UPROPERTY(VisibleAnywhere)
@@ -44,7 +47,7 @@ public:
 public:
 	void SetPawn(APawn* Pawn);
 	float GetSize() const { return Size; };
-	float GetSum() const {return InFireTime + RunningTime + NotCrouchingTime + NotCoveringMouth + WrongCount; };
+	float GetSum() const {return InFireTime + RunningTime + NotCrouchingTime + NotCoveringMouth + WrongCount + PlayTime; };
 	void AddFireTime(float DeltaTime);
 	void AddWrongCount(int32 Value);
 };
