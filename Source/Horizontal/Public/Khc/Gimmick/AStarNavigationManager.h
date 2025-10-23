@@ -19,7 +19,7 @@ public:
 
 	AAStarGridManager* GetManagerForLocation(const FVector& Location);
 
-	bool FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath);
+	float FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath);
 
 protected:
 	// Called when the game starts or when spawned
@@ -28,6 +28,9 @@ protected:
 private:
 	UPROPERTY()
 	TArray<TObjectPtr<AAStarGridManager>> AllGridManagers;
+
+	float FindPathRecursive(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath, TSet<AAStarGridManager*>& VisitedManagers);
+	
 
 	
 };

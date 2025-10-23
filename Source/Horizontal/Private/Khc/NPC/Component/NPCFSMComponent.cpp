@@ -98,7 +98,7 @@ void UNPCFSMComponent::SetState(ENPCState NewState)
 			{
 				UE_LOG(LogTemp, Error, TEXT("Server: TargetSafetyZone is not set on NPC Actor!"));
 				// 실패했으므로 상태를 다시 Wait로 되돌립니다.
-				SetState(ENPCState::Wait); 
+				SetState(ENPCState::Wait);
 			}
 			break;
 		}

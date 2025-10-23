@@ -33,74 +33,10 @@ AAStarGridManager* AAStarNavigationManager::GetManagerForLocation(const FVector&
 	return BestManager;
 }
 
-bool AAStarNavigationManager::FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath)
+float AAStarNavigationManager::FindPath(FVector StartLocation, FVector TargetLocation, TArray<FVector>& OutPath)
 {
-	// 1. 시작점과 목표점이 각각 어느 층에 있는지 확인
-    AAStarGridManager* StartManager = GetManagerForLocation(StartLocation);
-    AAStarGridManager* TargetManager = GetManagerForLocation(TargetLocation);
-
-    if (!StartManager || !TargetManager || !StartManager->IsGridReady() || !TargetManager->IsGridReady())
-    {
-        return false; // 지도가 준비되지 않았으면 실패
-    }
-
-    // 2. 만약 같은 층이라면, 해당 층의 GridManager에게 길찾기를 위임
-    if (StartManager == TargetManager)
-    {
-        return StartManager->FindPath(StartLocation, TargetLocation, OutPath);
-    }
-
-    // 3. 다른 층이라면, 층간 이동 경로 탐색 (가장 중요한 부분)
-    else
-    {
-        TArray<FVector> BestFullPath;
-        float MinTotalCost = BIG_NUMBER;
-
-        // 시작 층에 있는 모든 '환승역'(PathLink)을 후보지로 탐색
-        for (const FPathNode& Node : StartManager->GetGrid())
-        {
-            if (Node.LinkedActor && Node.LinkedActor->TargetPoint)
-            {
-                TArray<FVector> PathToLink;
-                // A. 시작점에서 환승역까지의 경로 계산
-                bool bFoundPathToLink = StartManager->FindPath(StartLocation, Node.WorldLocation, PathToLink);
-
-                if (bFoundPathToLink)
-                {
-                    // 환승역 반대편(다른 층) 위치
-                    FVector TargetLinkLocation = Node.LinkedActor->TargetPoint->GetActorLocation();
-                    
-                    TArray<FVector> PathFromLink;
-                    // B. 환승역 반대편에서 최종 목적지까지의 경로 계산
-                    bool bFoundPathFromLink = TargetManager->FindPath(TargetLinkLocation, TargetLocation, PathFromLink);
-
-                    if (bFoundPathFromLink)
-                    {
-                        // A 경로와 B 경로의 비용을 합산 (경로 길이로 근사치 계산)
-                        float PathACost = (PathToLink.Num() > 0) ? FVector::Dist(StartLocation, PathToLink.Last()) : 0;
-                        float PathBCost = (PathFromLink.Num() > 0) ? FVector::Dist(TargetLinkLocation, PathFromLink.Last()) : 0;
-                        float TotalCost = PathACost + PathBCost;
-
-                        // 이 환승역을 거치는 경로가 지금까지 찾은 경로보다 더 짧다면, 이걸 최고의 경로로 저장
-                        if (TotalCost < MinTotalCost)
-                        {
-                            MinTotalCost = TotalCost;
-                            BestFullPath = PathToLink;
-                            BestFullPath.Append(PathFromLink); // 두 경로를 합침
-                        }
-                    }
-                }
-            }
-        }
-
-        if (BestFullPath.Num() > 0)
-        {
-            OutPath = BestFullPath;
-            return true;
-        }
-    }
-
-    return false; // 층간 이동 경로를 찾지 못함
+	TSet<AAStarGridManager*> VisitedManagers; // 방문 기록 초기화
+	return FindPathRecursive(StartLocation, TargetLocation, OutPath, VisitedManagers);
 }
 
 // Called when the game starts or when spawned
@@ -117,4 +53,78 @@ void AAStarNavigationManager::BeginPlay()
 
 	UE_LOG(LogTemp, Log, TEXT("Found %d AStarGridManagers."), AllGridManagers.Num());
 	
+}
+
+float AAStarNavigationManager::FindPathRecursive(FVector StartLocation, FVector TargetLocation,
+	TArray<FVector>& OutPath, TSet<AAStarGridManager*>& VisitedManagers)
+{
+	AAStarGridManager* StartManager = GetManagerForLocation(StartLocation);
+    AAStarGridManager* TargetManager = GetManagerForLocation(TargetLocation);
+
+    if (!StartManager || !TargetManager || !StartManager->IsGridReady() || !TargetManager->IsGridReady())
+    {
+        return -1.0f;
+    }
+
+    // [재귀 탈출 조건 1] 이 층(StartManager)을 이미 방문했다면, 무한 루프이므로 탐색 중단
+    if (VisitedManagers.Contains(StartManager))
+    {
+        return -1.0f;
+    }
+    VisitedManagers.Add(StartManager); // 현재 층을 방문 목록에 추가
+
+    // [재귀 탈출 조건 2] 만약 같은 층이라면, '지역 가이드'에게 길찾기를 위임하고 비용 반환
+    if (StartManager == TargetManager)
+    {
+        // 방문 기록을 남길 필요가 없으므로 다시 제거 (선택적)
+        VisitedManagers.Remove(StartManager); 
+        return StartManager->FindPath(StartLocation, TargetLocation, OutPath);
+    }
+
+    // [재귀 탐색] 다른 층이라면, 현재 층의 모든 '환승역'을 탐색
+    TArray<FVector> BestFullPath;
+    float MinTotalCost = BIG_NUMBER;
+
+    for (const FPathNode& Node : StartManager->GetGrid())
+    {
+        if (Node.LinkedActor && Node.LinkedActor->TargetPoint)
+        {
+            TArray<FVector> PathToLink; // A경로 (시작점 -> 환승역 1)
+            
+            // A. 시작점에서 이 환승역(계단 입구)까지의 비용과 경로
+            float CostToLink = StartManager->FindPath(StartLocation, Node.WorldLocation, PathToLink);
+
+            if (CostToLink >= 0) // A경로 찾기에 성공했다면
+            {
+                FVector LinkTargetLocation = Node.LinkedActor->TargetPoint->GetActorLocation();
+                
+                TArray<FVector> PathFromLink; // B경로 (환승역 2 -> 최종 목적지)
+                
+                // B. 이 환승역의 반대편(다음 층)에서 최종 목적지까지의 비용과 경로를 '재귀 호출'
+                float CostFromLink = FindPathRecursive(LinkTargetLocation, TargetLocation, PathFromLink, VisitedManagers);
+
+                if (CostFromLink >= 0) // B경로 찾기에 성공했다면
+                {
+                    float TotalCost = CostToLink + CostFromLink;
+                    if (TotalCost < MinTotalCost)
+                    {
+                        MinTotalCost = TotalCost;
+                        BestFullPath = PathToLink;
+                        BestFullPath.Append(PathFromLink);
+                    }
+                }
+            }
+        }
+    }
+
+    // 이 층의 모든 환승역 탐색이 끝났으므로, 방문 기록에서 제거 (다른 경로가 이 층을 다시 방문할 수 있도록)
+    VisitedManagers.Remove(StartManager);
+
+    if (BestFullPath.Num() > 0)
+    {
+        OutPath = BestFullPath;
+        return MinTotalCost;
+    }
+
+    return -1.0f;
 }

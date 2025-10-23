@@ -6,9 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "MainGameMode.generated.h"
 
-/**
- * 
- */
+class ANPCBase;
 class AInteractableObjectBase;
 UCLASS()
 class HORIZONTAL_API AMainGameMode : public AGameModeBase
@@ -28,4 +26,7 @@ private:
 	// 성능을 위해 레벨에 있는 모든 상호작용 오브젝트 목록을 미리 저장해 둠
 	UPROPERTY()
 	TArray<AInteractableObjectBase*> AllInteractableObjectsInLevel;
+
+	UPROPERTY()
+	TArray<ANPCBase*> AllNPCsInLevel;
 };

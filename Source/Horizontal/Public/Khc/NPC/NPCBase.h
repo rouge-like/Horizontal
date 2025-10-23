@@ -17,12 +17,16 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	UFUNCTION()
+	void OnDialogueEventReceived(FName EventTag, AActor* InteractableActor);
 
 public:
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	void BindToPlayerController(APlayerController* PC);
+	
 	UPROPERTY(Replicated)
 	bool bHasBeenInteractedWith;
 	

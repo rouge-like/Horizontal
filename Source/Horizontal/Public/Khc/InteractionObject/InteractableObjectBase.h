@@ -29,6 +29,12 @@ protected:
 	UFUNCTION()
 	void OnDialogueEventReceived(FName EventTag, AActor* InteractableActor);
 
+	UPROPERTY(ReplicatedUsing = OnRep_IsMove)
+	bool bIsMove;
+
+	UFUNCTION()
+	void OnRep_IsMove();
+
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -45,6 +51,7 @@ protected:
 	// 상호작용 로직을 담당하는 범용 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UObjectInteractionComponent> InteractionComponent;
+
 
 
 };
