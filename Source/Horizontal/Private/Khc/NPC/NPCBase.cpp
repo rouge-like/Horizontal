@@ -73,6 +73,7 @@ void ANPCBase::OnDialogueEventReceived(FName EventTag, AActor* InteractableActor
 			}
 			FSMComp->SetState(ENPCState::Move);
 		}
+		
 	}
 }
 
