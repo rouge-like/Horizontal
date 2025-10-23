@@ -26,9 +26,14 @@ public:
 
 	void ShowImage(uint32 imgNum);
 	void HideImage();
-	
+
+	UFUNCTION()
+	void OnMediaOpenSuccess(FString FilePath);
+
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
+	virtual void NativeConstruct() override;
 
 	UPROPERTY(EditAnywhere, Category = "Dialogue")
 	TSubclassOf<UUserWidget> ChoiceButtonClass;

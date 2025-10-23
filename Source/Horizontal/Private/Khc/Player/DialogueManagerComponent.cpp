@@ -4,6 +4,7 @@
 #include "Khc/Player/DialogueManagerComponent.h"
 
 #include "AIController.h"
+#include "MediaPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -272,4 +273,3 @@ void UDialogueManagerComponent::Client_EndDialogue_Implementation()
 		}
 	}
 }
-

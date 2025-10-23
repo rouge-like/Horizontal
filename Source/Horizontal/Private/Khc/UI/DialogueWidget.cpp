@@ -86,6 +86,15 @@ FReply UDialogueWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, con
 	return FReply::Unhandled();
 }
 
+void UDialogueWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	if (MediaPlayer)
+	{
+		MediaPlayer->OnMediaOpened.AddDynamic(this, &UDialogueWidget::OnMediaOpenSuccess);
+	}
+}
+
 void UDialogueWidget::OnChoiceButtonClicked(FName JumpToLabel)
 {
 	if (DialogueManager.IsValid())
@@ -121,7 +130,7 @@ void UDialogueWidget::ShowImage(uint32 imgNum)
 
 			// 미디어 플레이어에게 비디오 파일을 열고 재생하라고 명령
 			MediaPlayer-> OpenSource(MediaSource);
-			MediaPlayer->Play();
+			//MediaPlayer->Play();
 		}
 	}
 	else
@@ -141,5 +150,14 @@ void UDialogueWidget::HideImage()
 	if (MediaPlayer && MediaPlayer->IsPlaying())
 	{
 		MediaPlayer->Close(); // 비디오 멈춤
+	}
+}
+
+void UDialogueWidget::OnMediaOpenSuccess(FString FilePath)
+{
+	if (MediaPlayer)
+	{
+		// 파일 열기에 성공했으므로, '지금' 재생합니다.
+		MediaPlayer->Play();
 	}
 }
