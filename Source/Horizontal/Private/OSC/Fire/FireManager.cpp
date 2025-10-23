@@ -155,6 +155,7 @@ void AFireManager::CheckPlayerInFire(float DeltaSeconds)
         if (!PS) continue;
 
         APlayerController* PC = PS->GetOwner<APlayerController>();
+
         if (!PC) continue;
 
         APawn* Pawn = PC->GetPawn();
@@ -166,7 +167,7 @@ void AFireManager::CheckPlayerInFire(float DeltaSeconds)
         const FVector PlayerExtent = FVector(PBS->GetSize());
         const FBox PlayerBox = FBox::BuildAABB(PlayerLocation, PlayerExtent);
 
-        GEngine->AddOnScreenDebugMessage(i, 0, FColor::White, FString::Printf(TEXT("Player %d's Score : %f"), i, PBS->InFireTime));
+        GEngine->AddOnScreenDebugMessage(i, 0, FColor::White, FString::Printf(TEXT("Player %d's Score : %f"), i, PBS->GetSum()));
         for (int32 CellIndex : ActiveCells)
         {
             if (!Cells.IsValidIndex(CellIndex))

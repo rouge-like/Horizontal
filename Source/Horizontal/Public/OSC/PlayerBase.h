@@ -34,6 +34,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	bool IsSprinting() const { return bIsSprinting; }
+	bool IsCoveringMouth() const { return HandsState == EHandsState::CoveringMouth; }
 	
 	EHandsState GetHandsState() const { return HandsState; }
 	void SetHandsState(EHandsState NewState) { HandsState = NewState; };

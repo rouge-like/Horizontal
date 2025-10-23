@@ -6,6 +6,7 @@
 #include "Khc/Player/DialogueManagerComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HorizontalCameraManager.h"
+#include "OSC/PlayerBaseState.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -24,6 +25,13 @@ void APlayerBaseController::BeginPlay()
 void APlayerBaseController::OnPossess(APawn* aPawn)
 {
 	Super::OnPossess(aPawn);
+
+	APlayerBaseState* PBS = GetPlayerState<APlayerBaseState>();
+
+	if (PBS)
+	{
+		PBS->SetPawn(aPawn);
+	}
 }
 
 void APlayerBaseController::SetupInputComponent()
