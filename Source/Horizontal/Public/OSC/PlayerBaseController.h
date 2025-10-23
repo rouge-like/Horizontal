@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "PlayerBaseController.generated.h"
 
+class UResultUI;
 /**
  * 
  */
@@ -31,7 +32,20 @@ protected:
 
 	/** Input mapping context setup */
 	virtual void SetupInputComponent() override;
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UDialogueManagerComponent* DialogueManagerComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Result")
+	TSubclassOf<UResultUI> ResultUIClass;
+
+	UPROPERTY()
+	UResultUI* ResultUI;
+	
+public:
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void ServerChangeToSpectator();
+
+	UFUNCTION(Client, Reliable, BlueprintCallable)
+	void ClientShowResultUI();
 };

@@ -21,7 +21,7 @@ void ALobbyGameMode::StartGame()
 	GetWorld()->ServerTravel(URL);
 }
 
-void ALobbyGameMode::OnJoinedPlayer()
+void ALobbyGameMode::OnJoinedPlayer() const
 {
 	int32 PlayerCount = GameState->PlayerArray.Num();
 	for (APlayerState* PS : GameState->PlayerArray)

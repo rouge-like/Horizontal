@@ -7,6 +7,7 @@
 class UPrimitiveComponent;
 class AVFXActor;
 class AVFXManager;
+class APlayerBaseState;
 UENUM(BlueprintType)
 enum class EFireCellState : uint8
 {
@@ -110,7 +111,7 @@ protected:
 
     void ApplySuppressionAtLocation(const FVector& WorldLocation, float SuppressionAmount);
 public:
-    void ApplySuppressionInSphere(const FVector& Center, float Radius, float SuppressionAmount);
+    void ApplySuppressionInSphere(APlayerBaseState* PlayerState, const FVector& Center, float Radius, float SuppressionAmount);
 
 protected:
     UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="1.0"))
@@ -186,7 +187,7 @@ private:
 
     int32 FindCellIndexRecursive(int32 CellIndex, const FVector& WorldLocation) const;
 
-    void ApplySuppressionInSphereRecursive(int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
+    void ApplySuppressionInSphereRecursive(APlayerBaseState* PlayerState, int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
     bool ApplySuppressionToCell(int32 CellIndex, float SuppressionAmount);
 
     UPROPERTY(Transient)

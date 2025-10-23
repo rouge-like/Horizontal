@@ -8,6 +8,7 @@
 #include "Net/UnrealNetwork.h"
 #include "OSC/Fire/FireManager.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseState.h"
 
 AExtinguisher::AExtinguisher()
 {
@@ -280,7 +281,10 @@ void AExtinguisher::UpdateSpray(float DeltaTime)
                 const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, SprayStart, TraceEnd, ECC_Visibility, QueryParams);
                 const FVector ImpactPoint = bHit ? Hit.ImpactPoint : TraceEnd;
 
-                FireManager->ApplySuppressionInSphere(ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
+                APlayerBaseState* PBS = OwningPlayer->GetPlayerState<APlayerBaseState>();
+
+                if (IsValid(PBS))
+                    FireManager->ApplySuppressionInSphere(PBS, ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
                 DrawDebugSphere(GetWorld(), ImpactPoint, SuppressionRadius, 16, FColor::Yellow, false, 0, 0, 1.5f);

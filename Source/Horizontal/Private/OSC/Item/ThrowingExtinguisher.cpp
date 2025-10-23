@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseState.h"
 #include "OSC/Fire/FireManager.h"
 #include "OSC/VFX/VFXManager.h"
 
@@ -390,7 +391,8 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
     CollisionComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
     CollisionComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 
-    if (AActor* Thrower = LastThrowingActor.Get())
+    APlayerBase* Thrower = LastThrowingActor.Get();
+    if (IsValid(Thrower))
     {
         CollisionComponent->IgnoreActorWhenMoving(Thrower, false);
     }
@@ -398,7 +400,11 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
 
 
     AFireManager* FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFireManager::StaticClass()));
-    FireManager->ApplySuppressionInSphere(GetActorLocation(), HitRadius, 100);
+
+    APlayerBaseState* PBS = Thrower->GetPlayerState<APlayerBaseState>();
+
+    if (IsValid(PBS) && IsValid(FireManager))
+        FireManager->ApplySuppressionInSphere(PBS, GetActorLocation(), HitRadius, 100);
     
     HandlePickupAvailabilityChanged();
 

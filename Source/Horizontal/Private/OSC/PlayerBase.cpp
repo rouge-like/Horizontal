@@ -88,6 +88,16 @@ void APlayerBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME(APlayerBase, HandsState);
 }
 
+void APlayerBase::UnPossessed()
+{
+	Super::UnPossessed();
+
+	if (bIsSprinting) bIsSprinting = false;
+	if (bIsCrouched) UnCrouch();
+	
+	GetCharacterMovement()->StopMovementImmediately();
+}
+
 void APlayerBase::RefreshMovementSpeed()
 {
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())

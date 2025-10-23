@@ -24,5 +24,5 @@ public:
 	void StartGame();
 
 	UFUNCTION()
-	void OnJoinedPlayer();
+	void OnJoinedPlayer() const;
 };
