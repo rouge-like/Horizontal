@@ -14,6 +14,8 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "OSC/PlayerBaseController.h"
+#include "OSC/PlayerBaseState.h"
 
 class AAIController;
 
@@ -91,20 +93,26 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			{
 				NPCController->ClearFocus(EAIFocusPriority::Gameplay);
 			}
-
-			// 이동 전에 그리드를 다시 만들도록 요청
-			// AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
-			// if (NavManager)
-			// {
-			// 	AAStarGridManager* GridManager = NavManager->GetManagerForLocation(NPC->GetActorLocation());
-			// 	if (GridManager)
-			// 	{
-			// 		GridManager->RebuildGrid();
-			// 	}
-			// }
-			// NPC->FSMComp->SetState(ENPCState::Move);
 		}
 	}
+	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
+	
+	if (DialogueRow->EventTag == "MoveToSafeZone")
+	{
+		if (PlayerState)
+		{
+			PlayerState->AddRecueScore(1);
+		}
+	}
+
+	if (DialogueRow->EventTag == "OpenDoorBad")
+	{
+		if (PlayerState)
+		{
+			PlayerState->AddWrongScore(10);
+		}
+	}
+	
 
 	// 3. 모든 클라이언트에게 대화 종료를 알림
 	Client_EndDialogue();

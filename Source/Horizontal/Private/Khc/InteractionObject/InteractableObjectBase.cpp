@@ -97,7 +97,7 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
-	else if (EventTag == "OpenDoor")
+	else if (EventTag == "OpenDoor" || EventTag == "OpenDoorBad")
 	{
 		bIsMove = true; 
 		OnRep_IsMove();
