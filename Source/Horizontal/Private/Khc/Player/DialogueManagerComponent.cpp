@@ -211,6 +211,7 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	if (DialogueWidgetInstance)
 	{
 		DialogueWidgetInstance->SetDialogueManager(this);
+		DialogueWidgetInstance->HideImage();
 		
 		switch (DialogueData.DialogueType)
 		{
@@ -227,6 +228,15 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 		case EDialogueDataType::EndBad:
 			DialogueWidgetInstance->UpdateDialogue(DialogueData);
 			break;
+		}
+
+		if (CurrentDialogueLabel == "Door01_3")
+		{
+			DialogueWidgetInstance->ShowImage(0);
+		}
+		else if (CurrentDialogueLabel == "NPC03_7")
+		{
+			DialogueWidgetInstance->ShowImage(1);
 		}
 	}
 }

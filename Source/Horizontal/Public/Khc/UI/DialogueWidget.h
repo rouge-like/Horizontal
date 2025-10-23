@@ -23,6 +23,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void OnChoiceButtonClicked(FName JumpToLabel);
+
+	void ShowImage(uint32 imgNum);
+	void HideImage();
 	
 protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -44,4 +47,17 @@ private:
 	class UVerticalBox* SelectionBox;
 
 	FDialogueRow CurrentDialogueData;
+
+	UPROPERTY(meta = (BindWidget))
+	class UImage* ExampleImg;
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Assets", meta = (AllowedClasses = "Texture2D, MediaSource"))
+	TArray<TObjectPtr<UObject>> DisplayableAssets;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Video")
+	class UMediaPlayer* MediaPlayer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Video")
+	class UMediaTexture* MediaTexture;
 };
