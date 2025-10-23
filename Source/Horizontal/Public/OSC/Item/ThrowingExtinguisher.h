@@ -114,5 +114,5 @@ protected:
     FName VFXName;
     
     bool bInFlight = false;
-    TWeakObjectPtr<AActor> LastThrowingActor;
+    TWeakObjectPtr<APlayerBase> LastThrowingActor;
 };
