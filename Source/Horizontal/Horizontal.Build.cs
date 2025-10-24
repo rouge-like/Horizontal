@@ -22,7 +22,8 @@ public class Horizontal : ModuleRules
 			"Niagara",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
-			"MoviePlayer"
+			"MoviePlayer",
+			"MediaAssets"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

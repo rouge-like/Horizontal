@@ -21,7 +21,7 @@ AInteractableObjectBase::AInteractableObjectBase()
 	InteractionComponent = CreateDefaultSubobject<UObjectInteractionComponent>(TEXT("InteractionComponent"));
 	InteractionComponent->SphereComp->SetSphereRadius(100.f);
 	RootComponent = InteractionComponent->SphereComp;
-	InteractionComponent->InteractionUI->SetupAttachment(InteractionComponent->SphereComp);
+	InteractionComponent->InteractionUI->SetupAttachment(RootComponent);
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
@@ -29,16 +29,8 @@ AInteractableObjectBase::AInteractableObjectBase()
 	// 기본적으로 플레이어의 라인 트레이스(Visibility 채널)에 감지되도록 콜리전 설정
 	MeshComponent->SetCollisionObjectType(ECC_WorldStatic);
 	MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
-
-	// 2. 상호작용 컴포넌트 생성 (논리적인 컴포넌트라 Attachment 불필요)
-
-	// 3. UI 위젯 컴포넌트 생성 및 설정
-	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
-	// InteractionUI->SetupAttachment(RootComponent); // 메시 컴포넌트에 부착
-	// InteractionUI->SetWidgetSpace(EWidgetSpace::Screen); // 항상 화면을 바라보도록 설정
-	// InteractionUI->SetVisibility(false); // 기본적으로 숨겨둠
+	MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
 }
-
 void AInteractableObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -77,6 +69,10 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	if (EventTag == "DestroyObstacle")
 	{
 		Destroy();
+		//(X=-252.000000,Y=237.000000,Z=420.000000)
+		//(Pitch=-39.999999,Yaw=90.000000,Roll=0.000001)
+		//(X=-252.000000,Y=54.000000,Z=368.000000)
+		//(Pitch=90.000000,Yaw=90.000000,Roll=0.000000)
 	}
 	// 2. Obstruction 일때 EndBad -> 다시 상호작용 가능
 	else if (EventTag == "ResetInteraction")
@@ -101,7 +97,7 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
-	else if (EventTag == "OpenDoor")
+	else if (EventTag == "OpenDoor" || EventTag == "OpenDoorBad")
 	{
 		bIsMove = true; 
 		OnRep_IsMove();

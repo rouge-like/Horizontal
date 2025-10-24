@@ -7,6 +7,7 @@
 class APlayerBase;
 class UInventoryComponent;
 class FLifetimeProperty;
+class UInteractableComponentBase;
 
 UCLASS(Abstract)
 class HORIZONTAL_API AUsableItemBase : public AActor
@@ -80,4 +81,7 @@ protected:
     void ServerStartUse();
     UFUNCTION(Server, Reliable)
     void ServerStopUse();
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Interact")
+    UInteractableComponentBase* InteractableComponent;
 };
