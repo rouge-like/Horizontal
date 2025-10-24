@@ -4,14 +4,13 @@
 #include "InputAction.h"
 #include "Net/UnrealNetwork.h"
 #include "CollisionShape.h"
-#include "NiagaraComponent.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "Khc/Player/PlayerInteractionComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "OSC/InventoryComponent.h"
-#include "OSC/UsableItemBase.h"
+#include "OSC/Item/UsableItemBase.h"
 
 APlayerBase::APlayerBase()
 {

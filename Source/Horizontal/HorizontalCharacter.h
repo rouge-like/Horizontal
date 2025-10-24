@@ -53,7 +53,7 @@ public:
 	AHorizontalCharacter();
 
 protected:
-
+	virtual void BeginPlay() override;
 	/** Called from Input Actions for movement input */
 	void MoveInput(const FInputActionValue& Value);
 

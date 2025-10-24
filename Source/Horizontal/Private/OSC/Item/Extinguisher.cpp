@@ -2,6 +2,7 @@
 
 #include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -36,6 +37,9 @@ AExtinguisher::AExtinguisher()
 
     Spray = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Spray"));
     Spray->SetupAttachment(CollisionComponent);
+
+    AudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("Audio"));
+    AudioComponent->SetupAttachment(Spray);
 }
 
 void AExtinguisher::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -110,6 +114,7 @@ void AExtinguisher::HandleStartUse()
     {
         Spray->SetVisibility(true);
         Spray->ResetSystem();
+        AudioComponent->Play();
     }
 
     bIsSpraying = true;
@@ -125,6 +130,7 @@ void AExtinguisher::HandleStopUse()
         SprayUpdateAccumulator = 0.0f;
 
         Spray->Deactivate();
+        AudioComponent->Stop();
     }
 }
 

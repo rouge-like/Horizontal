@@ -45,6 +45,14 @@ AHorizontalCharacter::AHorizontalCharacter()
 	GetCharacterMovement()->AirControl = 0.5f;
 }
 
+void AHorizontalCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	FirstPersonMesh->HideBoneByName(TEXT("Head"), EPhysBodyOp::PBO_None);
+	//FirstPersonMesh->HideBoneByName(TEXT("Spine2"), EPhysBodyOp::PBO_None);
+}
+
 void AHorizontalCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {	
 	// Set up action bindings

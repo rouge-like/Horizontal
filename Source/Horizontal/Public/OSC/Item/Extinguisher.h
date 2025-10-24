@@ -6,6 +6,7 @@
 
 class AFireManager;
 class UCapsuleComponent;
+class UAudioComponent;
 
 UCLASS()
 class HORIZONTAL_API AExtinguisher : public AAimableItemBase
@@ -42,6 +43,8 @@ protected:
     UStaticMeshComponent* HoseForAim;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
     UNiagaraComponent* Spray;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components")
+    UAudioComponent* AudioComponent;
     
     UPROPERTY(EditDefaultsOnly, Category="Spray")
     FVector LocalSprayOffset = FVector(15.0f, 0.0f, 0.0f);

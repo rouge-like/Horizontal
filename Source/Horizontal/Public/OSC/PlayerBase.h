@@ -133,5 +133,6 @@ protected:
 	UFUNCTION()
 	void OnRep_IsSprinting();
 
+	UPROPERTY()
 	class UPlayerInteractionComponent* InteractionComponent;
 };

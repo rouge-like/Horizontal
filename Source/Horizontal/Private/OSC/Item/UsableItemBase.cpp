@@ -1,12 +1,13 @@
-﻿#include "OSC/UsableItemBase.h"
-
+﻿#include "OSC/Item/UsableItemBase.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Khc/InteractableComponentBase.h"
 #include "Khc/Player/DialogueManagerComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/Sound/SoundManager.h"
 
 AUsableItemBase::AUsableItemBase()
 {
@@ -56,6 +57,9 @@ void AUsableItemBase::OnPickup(APlayerBase* InOwner)
     SetPickupAvailability(false);
 
     Inventory->AddItem(this);
+
+    ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("Pickup")), OwningPlayer->GetActorLocation());
 }
 
 void AUsableItemBase::OnDrop()

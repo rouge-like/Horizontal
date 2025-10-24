@@ -13,7 +13,10 @@
 #include "OSC/PlayerBase.h"
 #include "OSC/PlayerBaseState.h"
 #include "OSC/Fire/FireManager.h"
+#include "OSC/Sound/SoundManager.h"
 #include "OSC/VFX/VFXManager.h"
+
+class ASoundManager;
 
 AThrowingExtinguisher::AThrowingExtinguisher()
 {
@@ -410,6 +413,12 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
 
     AVFXManager* VFXManager = Cast<AVFXManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AVFXManager::StaticClass()));
     VFXManager->SpawnVFX(VFXName, GetActorLocation(), GetActorRotation(), FVector(HitRadius / 100.f));
+
+    ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("BottleBreak")), GetActorLocation());
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("WaterSplash")), GetActorLocation());
+    
+    Destroy();
 }
 
 

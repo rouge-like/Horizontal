@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OSC/UsableItemBase.h"
+#include "OSC/Item/UsableItemBase.h"
 #include "AimableItemBase.generated.h"
 
 class UNiagaraComponent;
