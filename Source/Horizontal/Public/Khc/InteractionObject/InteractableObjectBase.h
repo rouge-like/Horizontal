@@ -53,5 +53,6 @@ protected:
 	TObjectPtr<class UObjectInteractionComponent> InteractionComponent;
 
 
+	float originRotYaw = 0.f;
 
 };

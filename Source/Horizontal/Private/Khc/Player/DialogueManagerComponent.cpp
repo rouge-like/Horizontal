@@ -239,7 +239,7 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 			break;
 		}
 
-		if (CurrentDialogueLabel == "Door01_3")
+		if (CurrentDialogueLabel == "Door01_2")
 		{
 			DialogueWidgetInstance->ShowImage(0);
 		}

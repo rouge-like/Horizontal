@@ -99,7 +99,8 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	}
 	else if (EventTag == "OpenDoor" || EventTag == "OpenDoorBad")
 	{
-		bIsMove = true; 
+		bIsMove = true;
+		originRotYaw = GetActorRotation().Yaw;
 		OnRep_IsMove();
 	}
 }
@@ -118,9 +119,9 @@ void AInteractableObjectBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (bIsMove)
 	{
-		const float TargetYaw = -140.0f;
-		const float RotationSpeed = 100.0f; 
+		const float TargetYaw = originRotYaw + (-140.0f);
 		float CurrentYaw = GetActorRotation().Yaw;
+		const float RotationSpeed = 100.0f; 
 		float NewYaw = FMath::FInterpConstantTo(CurrentYaw, TargetYaw, DeltaTime, RotationSpeed);
 
 		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
