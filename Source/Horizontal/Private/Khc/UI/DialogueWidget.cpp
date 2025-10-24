@@ -48,7 +48,7 @@ void UDialogueWidget::UpdateSelectionDialogue(const FDialogueRow& DialogueData)
 			if (SelectionSlot)
 			{
 				// 위아래로 5픽셀씩 여백을 줍니다. (값은 원하는 대로 조절 가능)
-				SelectionSlot->SetPadding(FMargin(0.f, 50.f));
+				SelectionSlot->SetPadding(FMargin(0.f, 100.f / DialogueData.Choices.Num()));
 			}
 		}
 	}

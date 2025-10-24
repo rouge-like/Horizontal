@@ -30,17 +30,11 @@ ANPCBase::ANPCBase()
 		InteractionComp->SphereComp->SetupAttachment(RootComponent);
 		InteractionComp->SphereComp->SetSphereRadius(100.f);
 	}
-	//
-	// InteractionUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("InteractionUI"));
-	// InteractionUI->SetupAttachment(RootComponent);
 }
 
 void ANPCBase::BeginPlay()
 {
 	Super::BeginPlay();
-	//
-	// if (InteractionUI)
-	// 	InteractionUI->SetVisibility(false);
 }
 
 void ANPCBase::OnDialogueEventReceived(FName EventTag, AActor* InteractableActor)
@@ -86,9 +80,16 @@ void ANPCBase::BindToPlayerController(APlayerController* PC)
 		UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
 		if (DialogueManager)
 		{
-			// 이 NPC의 OnDialogueEventReceived 함수를 해당 DialogueManager의 델리게이트에 연결합니다.
 			DialogueManager->OnDialogueEvent.AddDynamic(this, &ANPCBase::OnDialogueEventReceived);
 		}
+	}
+}
+
+void ANPCBase::SetReInteractable()
+{
+	if (InteractionComp)
+	{
+		InteractionComp->SetInteractable(true);
 	}
 }
 

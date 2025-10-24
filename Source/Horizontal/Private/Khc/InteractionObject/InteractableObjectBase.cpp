@@ -8,11 +8,10 @@
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMeshActor.h"
 #include "Khc/Player/DialogueManagerComponent.h"
 #include "Net/UnrealNetwork.h"
 
-
-// Sets default values
 AInteractableObjectBase::AInteractableObjectBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -26,7 +25,6 @@ AInteractableObjectBase::AInteractableObjectBase()
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(RootComponent);
 
-	// 기본적으로 플레이어의 라인 트레이스(Visibility 채널)에 감지되도록 콜리전 설정
 	MeshComponent->SetCollisionObjectType(ECC_WorldStatic);
 	MeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
@@ -45,7 +43,6 @@ void AInteractableObjectBase::BindToPlayerController(APlayerController* PC)
 		UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
 		if (DialogueManager)
 		{
-			// 이 오브젝트의 OnDialogueEventReceived 함수를 해당 DialogueManager의 델리게이트에 연결합니다.
 			DialogueManager->OnDialogueEvent.AddDynamic(this, &AInteractableObjectBase::OnDialogueEventReceived);
 		}
 	}
@@ -68,13 +65,20 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	// 1. Obstruction 일때 EndGood -> 파괴
 	if (EventTag == "DestroyObstacle")
 	{
-		Destroy();
+		//Destroy();
+
+		ObstacleTargetLocation = FVector(-252.000000, 54.000000, 368.000000);
+		ObstacleTargetRotation = FRotator(90.000000, 90.000000, 0.000001);
+       
+		bObstacleMove = true; 
+       
+		OnRep_ObstacleMove();
+		
 		//(X=-252.000000,Y=237.000000,Z=420.000000)
 		//(Pitch=-39.999999,Yaw=90.000000,Roll=0.000001)
 		//(X=-252.000000,Y=54.000000,Z=368.000000)
 		//(Pitch=90.000000,Yaw=90.000000,Roll=0.000000)
 	}
-	// 2. Obstruction 일때 EndBad -> 다시 상호작용 가능
 	else if (EventTag == "ResetInteraction")
 	{
 		if (InteractionComponent)
@@ -82,14 +86,10 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
-	// 3 & 4. Trigger 일때 EndGood/EndBad -> 상호작용 불가능 상태 유지
 	else if (EventTag == "DeactivateTrigger")
 	{
-		// PlayerInteractionComponent에서 SetInteractable(false)로 이미 잠갔으므로,
-		// 여기서는 특별한 행동이 필요 없습니다. 만약 문을 열거나 하는 추가 행동이 필요하다면 여기에 구현합니다.
 		UE_LOG(LogTemp, Log, TEXT("Trigger '%s' has been deactivated."), *GetName());
 	}
-	// 5. Information 타입은 대화 종료 후 즉시 다시 상호작용 가능
 	else if (EventTag == "InfoReset")
 	{
 		if (InteractionComponent)
@@ -103,13 +103,33 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 		originRotYaw = GetActorRotation().Yaw;
 		OnRep_IsMove();
 	}
+	else if (EventTag == "OpenMainDoor")
+	{
+		bMainDoorMove = true;
+		OnRep_MainDoorMove();
+	}
 }
 
 void AInteractableObjectBase::OnRep_IsMove()
 {
 	if (bIsMove)
 	{
-		// 클라이언트에서도 Tick 로직을 실행할 수 있도록 활성화합니다.
+		PrimaryActorTick.bCanEverTick = true;
+	}
+}
+
+void AInteractableObjectBase::OnRep_ObstacleMove()
+{
+	if (bObstacleMove)
+	{
+		PrimaryActorTick.bCanEverTick = true;
+	}
+}
+
+void AInteractableObjectBase::OnRep_MainDoorMove()
+{
+	if (bMainDoorMove)
+	{
 		PrimaryActorTick.bCanEverTick = true;
 	}
 }
@@ -130,5 +150,49 @@ void AInteractableObjectBase::Tick(float DeltaTime)
 		{
 			bIsMove = false; // 이동 완료
 		}
+	}
+
+	if (bObstacleMove)
+	{
+		const float InterpSpeed = 5.0f; 
+        
+		// 액터 전체의 위치와 회전을 부드럽게 보간
+		FTransform CurrentTransform = GetActorTransform();
+		FVector NewLocation = FMath::VInterpTo(CurrentTransform.GetLocation(), ObstacleTargetLocation, DeltaTime, InterpSpeed);
+		FRotator NewRotation = FMath::RInterpTo(CurrentTransform.GetRotation().Rotator(), ObstacleTargetRotation, DeltaTime, InterpSpeed);
+
+		// 액터의 트랜스폼을 업데이트 (충돌 무시)
+		SetActorTransform(FTransform(NewRotation, NewLocation), false, nullptr, ETeleportType::TeleportPhysics);
+
+		// 목표 지점에 거의 도달했는지 확인
+		if (CurrentTransform.GetLocation().Equals(ObstacleTargetLocation, 1.0f))
+		{
+			bObstacleMove = false; // 이동 완료
+		}
+	}
+
+	if (bMainDoorMove)
+	{
+		if (MainDoor == nullptr)
+		{
+			bMainDoorMove = false;
+			return;
+		}
+		float CurrentZ = MainDoor->GetActorLocation().Z;
+		float TargetZ = 550.f;
+		
+		float NewZ = FMath::FInterpConstantTo(CurrentZ, TargetZ, DeltaTime, 20);
+
+		MainDoor->SetActorLocation(FVector(374.0, 1544.0, NewZ));
+
+		if (FMath::IsNearlyEqual(NewZ, TargetZ))
+		{
+			bMainDoorMove = false; // 이동 완료
+		}
+	}
+
+	if (!bIsMove && !bObstacleMove && !bMainDoorMove)
+	{
+		PrimaryActorTick.bCanEverTick = false;
 	}
 }
