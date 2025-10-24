@@ -96,15 +96,7 @@ void AFireManager::Tick(float DeltaSeconds)
     {
         return;
     }
-    // for (int32 RootIndex : RootCellIndices)
-    // {
-    //     if (!Cells.IsValidIndex(RootIndex))
-    //     {
-    //         continue;
-    //     }
-    //
-    //     ProcessCellRecursive(RootIndex, DeltaSeconds);
-    // }
+   
     NextActiveCells.Empty();
     
     for (int32 CellIndex : ActiveCells)
@@ -382,15 +374,6 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 C
 
     FFireCell& LeafCell = Cells[CellIndex];
 
-//     if (LeafCell.CellExtent.IsNearlyZero())
-//     {
-// #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-//         const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-//         DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, true, 2.0f, 0, 1.0f);
-// #endif
-//         Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
-//         return Result;
-//     }
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     const FColor DebugColor = Cells[CellIndex].State == EFireCellState::Burning ? FColor::Red : (Cells[CellIndex].State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
@@ -934,6 +917,43 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     SpawnedActor->SetVFXName(VFXName);
     ActiveFireVFXActors.Add(CellIndex, SpawnedActor);
     Cell.ActiveEffect = SpawnedActor;
+
+    //오브젝트 불 메테리얼 전환 시스템
+    if (BurnMaterial)
+    {
+        UPrimitiveComponent* PrimComp = Cell.AttachedComponent.Get();
+        if (PrimComp)
+        {
+            if (UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(PrimComp))
+            {
+                UMaterialInstanceDynamic* DMI = SMC->CreateDynamicMaterialInstance(0, BurnMaterial);
+                if (DMI)
+                {
+                    // 초기 파라미터 세팅
+                    DMI->SetScalarParameterValue(TEXT("BurnRadius"), 0.f);
+                    DMI->SetScalarParameterValue(TEXT("EdgeWidth"), 80.f);
+                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
+                }
+            }
+            else if (USkeletalMeshComponent* SKC = Cast<USkeletalMeshComponent>(PrimComp))
+            {
+                UMaterialInstanceDynamic* DMI = SKC->CreateDynamicMaterialInstance(0, BurnMaterial);
+                if (DMI)
+                {
+                    DMI->SetScalarParameterValue(TEXT("BurnRadius"), 0.f);
+                    DMI->SetScalarParameterValue(TEXT("EdgeWidth"), 80.f);
+                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
+                }
+            }
+        }
+    }
+
+    // 번짐 시작 (AVFXActor가 MPC_Fire를 제어함)
+    const float MaxRadius = Cell.CellExtent.Size();
+    SpawnedActor->EdgeWidth  = 80.f;
+    SpawnedActor->BurnIntensity_G = 6.f;
+    SpawnedActor->StartBurnAt(SpawnLocation, 0.f, MaxRadius);
+
 }
 
 void AFireManager::DeactivateFireVFX(int32 CellIndex)

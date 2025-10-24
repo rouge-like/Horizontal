@@ -4,6 +4,7 @@
 #include "Khc/Player/DialogueManagerComponent.h"
 
 #include "AIController.h"
+#include "MediaPlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -13,6 +14,8 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "OSC/PlayerBaseController.h"
+#include "OSC/PlayerBaseState.h"
 
 class AAIController;
 
@@ -90,20 +93,26 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			{
 				NPCController->ClearFocus(EAIFocusPriority::Gameplay);
 			}
-
-			// 이동 전에 그리드를 다시 만들도록 요청
-			// AAStarNavigationManager* NavManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
-			// if (NavManager)
-			// {
-			// 	AAStarGridManager* GridManager = NavManager->GetManagerForLocation(NPC->GetActorLocation());
-			// 	if (GridManager)
-			// 	{
-			// 		GridManager->RebuildGrid();
-			// 	}
-			// }
-			// NPC->FSMComp->SetState(ENPCState::Move);
 		}
 	}
+	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
+	
+	if (DialogueRow->EventTag == "MoveToSafeZone")
+	{
+		if (PlayerState)
+		{
+			PlayerState->AddRecueScore(1);
+		}
+	}
+
+	if (DialogueRow->EventTag == "OpenDoorBad")
+	{
+		if (PlayerState)
+		{
+			PlayerState->AddWrongScore(10);
+		}
+	}
+	
 
 	// 3. 모든 클라이언트에게 대화 종료를 알림
 	Client_EndDialogue();
@@ -211,6 +220,7 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	if (DialogueWidgetInstance)
 	{
 		DialogueWidgetInstance->SetDialogueManager(this);
+		DialogueWidgetInstance->HideImage();
 		
 		switch (DialogueData.DialogueType)
 		{
@@ -227,6 +237,15 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 		case EDialogueDataType::EndBad:
 			DialogueWidgetInstance->UpdateDialogue(DialogueData);
 			break;
+		}
+
+		if (CurrentDialogueLabel == "Door01_3")
+		{
+			DialogueWidgetInstance->ShowImage(0);
+		}
+		else if (CurrentDialogueLabel == "NPC03_7")
+		{
+			DialogueWidgetInstance->ShowImage(1);
 		}
 	}
 }
@@ -262,4 +281,3 @@ void UDialogueManagerComponent::Client_EndDialogue_Implementation()
 		}
 	}
 }
-

@@ -69,6 +69,10 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	if (EventTag == "DestroyObstacle")
 	{
 		Destroy();
+		//(X=-252.000000,Y=237.000000,Z=420.000000)
+		//(Pitch=-39.999999,Yaw=90.000000,Roll=0.000001)
+		//(X=-252.000000,Y=54.000000,Z=368.000000)
+		//(Pitch=90.000000,Yaw=90.000000,Roll=0.000000)
 	}
 	// 2. Obstruction 일때 EndBad -> 다시 상호작용 가능
 	else if (EventTag == "ResetInteraction")
@@ -93,7 +97,7 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			InteractionComponent->SetInteractable(true);
 		}
 	}
-	else if (EventTag == "OpenDoor")
+	else if (EventTag == "OpenDoor" || EventTag == "OpenDoorBad")
 	{
 		bIsMove = true; 
 		OnRep_IsMove();

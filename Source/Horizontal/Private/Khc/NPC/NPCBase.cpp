@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "OSC/PlayerBaseState.h"
 
 
 ANPCBase::ANPCBase()
@@ -72,7 +73,9 @@ void ANPCBase::OnDialogueEventReceived(FName EventTag, AActor* InteractableActor
 				}
 			}
 			FSMComp->SetState(ENPCState::Move);
+			//GetWorld()->GetFirstPlayerController()->GetPlayerState<APlayerBaseState>()->AddRecueScore(1);
 		}
+		
 	}
 }
 

@@ -195,4 +195,7 @@ private:
 
     UPROPERTY(Transient)
     TMap<int32, TWeakObjectPtr<AVFXActor>> ActiveFireVFXActors;
+
+    UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
+    UMaterialInterface* BurnMaterial = nullptr;
 };
