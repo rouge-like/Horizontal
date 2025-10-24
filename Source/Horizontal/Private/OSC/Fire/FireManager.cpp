@@ -167,7 +167,6 @@ void AFireManager::CheckPlayerInFire(float DeltaSeconds)
         const FVector PlayerExtent = FVector(PBS->GetSize());
         const FBox PlayerBox = FBox::BuildAABB(PlayerLocation, PlayerExtent);
 
-        GEngine->AddOnScreenDebugMessage(i, 0, FColor::White, FString::Printf(TEXT("Player %d's Score : %f"), i, PBS->GetSum()));
         for (int32 CellIndex : ActiveCells)
         {
             if (!Cells.IsValidIndex(CellIndex))
@@ -978,7 +977,7 @@ void AFireManager::ApplySuppressionAtLocation(const FVector& WorldLocation, floa
     ApplySuppressionToCell(CellIndex, SuppressionAmount);
 }
 
-void AFireManager::ApplySuppressionInSphere(const FVector& Center, float Radius, float SuppressionAmount)
+void AFireManager::ApplySuppressionInSphere(APlayerBaseState* PlayerState, const FVector& Center, float Radius, float SuppressionAmount)
 {
     if (SuppressionAmount <= 0.0f || Radius <= KINDA_SMALL_NUMBER)
     {
@@ -988,11 +987,11 @@ void AFireManager::ApplySuppressionInSphere(const FVector& Center, float Radius,
     const double RadiusSquared = FMath::Square(static_cast<double>(Radius));
     for (int32 RootIndex : RootCellIndices)
     {
-        ApplySuppressionInSphereRecursive(RootIndex, Center, RadiusSquared, SuppressionAmount);
+        ApplySuppressionInSphereRecursive(PlayerState, RootIndex, Center, RadiusSquared, SuppressionAmount);
     }
 }
 
-void AFireManager::ApplySuppressionInSphereRecursive(int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount)
+void AFireManager::ApplySuppressionInSphereRecursive(APlayerBaseState* PlayerState, int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount)
 {
     if (!Cells.IsValidIndex(CellIndex))
     {
@@ -1013,7 +1012,7 @@ void AFireManager::ApplySuppressionInSphereRecursive(int32 CellIndex, const FVec
         {
             if (ChildIndex != INDEX_NONE)
             {
-                ApplySuppressionInSphereRecursive(ChildIndex, Center, RadiusSquared, SuppressionAmount);
+                ApplySuppressionInSphereRecursive(PlayerState, ChildIndex, Center, RadiusSquared, SuppressionAmount);
             }
         }
         return;
@@ -1022,6 +1021,7 @@ void AFireManager::ApplySuppressionInSphereRecursive(int32 CellIndex, const FVec
     if (ApplySuppressionToCell(CellIndex, SuppressionAmount))
     {
         // nothing extra
+        PlayerState->AddExtinguishScore(1);
     }
 }
 
@@ -1048,11 +1048,11 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     if (Cell.State == EFireCellState::Burning)
     {
         Cell.Heat = FMath::Max(0.0f, Cell.Heat - SuppressionAmount);
-        bModified = true;
         // UE_LOG(LogTemp, Warning, TEXT("Cell %d : %f / -%f"), CellIndex, Cell.Heat, SuppressionAmount);
         
         if (Cell.Heat <= KINDA_SMALL_NUMBER)
         {
+            bModified = true;
             Cell.Heat = 0.0f;
             Cell.State = EFireCellState::Extinguished;
             Cell.IgnitionTimeRemaining = 0.0f;
@@ -1063,8 +1063,6 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     {
         Cell.IgnitionTimeRemaining = FMath::Max(0.0f, Cell.IgnitionTimeRemaining - SuppressionAmount);
         Cell.Heat = FMath::Max(0.0f, Cell.Heat - SuppressionAmount);
-
-        bModified = true;
 
         if (Cell.IgnitionTimeRemaining <= KINDA_SMALL_NUMBER || Cell.Heat <= KINDA_SMALL_NUMBER)
         {

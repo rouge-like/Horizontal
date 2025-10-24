@@ -15,14 +15,17 @@ class HORIZONTAL_API ALobbyGameMode : public AGameModeBase
 	GENERATED_BODY()
 	
 	virtual void BeginPlay() override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	
 protected:
 	UPROPERTY(EditDefaultsOnly)
 	FString URL;
 
+	int32 PawnCount;
 public:
 	UFUNCTION(BlueprintCallable)
 	void StartGame();
 
 	UFUNCTION()
-	void OnJoinedPlayer();
+	void OnJoinedPlayer() const;
 };

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OSC/UsableItemBase.h"
+#include "OSC/Item/UsableItemBase.h"
 #include "WetTowel.generated.h"
 
 UCLASS()

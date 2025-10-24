@@ -1,15 +1,20 @@
-﻿#include "OSC/UsableItemBase.h"
-
+﻿#include "OSC/Item/UsableItemBase.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Khc/InteractableComponentBase.h"
+#include "Khc/Player/DialogueManagerComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/Sound/SoundManager.h"
 
 AUsableItemBase::AUsableItemBase()
 {
     PrimaryActorTick.bCanEverTick = false;
     bReplicates = true;
+
+    InteractableComponent = CreateDefaultSubobject<UInteractableComponentBase>(TEXT("InteractableComponent"));
 }
 
 void AUsableItemBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -52,6 +57,9 @@ void AUsableItemBase::OnPickup(APlayerBase* InOwner)
     SetPickupAvailability(false);
 
     Inventory->AddItem(this);
+
+    ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("Pickup")), OwningPlayer->GetActorLocation());
 }
 
 void AUsableItemBase::OnDrop()
@@ -174,6 +182,17 @@ bool AUsableItemBase::TryAttachToOwnerMesh()
         return false;
     }
 
+    APlayerController* PC = Cast<APlayerController>(OwningPlayer->GetController());
+    if (IsValid(PC))
+    {
+        UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
+        if (IsValid(DialogueManager))
+        {
+            // 어떤 타입의 컴포넌트든 상관없이 DialogueStartLabel을 가져와 대화 시작
+            DialogueManager->StartDialogue(InteractableComponent, InteractableComponent->DialogueStartLabel);
+        }
+    }
+    
     if (USkeletalMeshComponent* PlayerMesh = LocalOwner->GetFirstPersonMesh())
     {
         if (!SocketName.IsEmpty())

@@ -2,12 +2,14 @@
 
 #include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/Fire/FireManager.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseState.h"
 
 AExtinguisher::AExtinguisher()
 {
@@ -35,6 +37,9 @@ AExtinguisher::AExtinguisher()
 
     Spray = CreateDefaultSubobject<UNiagaraComponent>(TEXT("Spray"));
     Spray->SetupAttachment(CollisionComponent);
+
+    AudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("Audio"));
+    AudioComponent->SetupAttachment(Spray);
 }
 
 void AExtinguisher::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -109,6 +114,7 @@ void AExtinguisher::HandleStartUse()
     {
         Spray->SetVisibility(true);
         Spray->ResetSystem();
+        AudioComponent->Play();
     }
 
     bIsSpraying = true;
@@ -124,6 +130,7 @@ void AExtinguisher::HandleStopUse()
         SprayUpdateAccumulator = 0.0f;
 
         Spray->Deactivate();
+        AudioComponent->Stop();
     }
 }
 
@@ -280,7 +287,10 @@ void AExtinguisher::UpdateSpray(float DeltaTime)
                 const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, SprayStart, TraceEnd, ECC_Visibility, QueryParams);
                 const FVector ImpactPoint = bHit ? Hit.ImpactPoint : TraceEnd;
 
-                FireManager->ApplySuppressionInSphere(ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
+                APlayerBaseState* PBS = OwningPlayer->GetPlayerState<APlayerBaseState>();
+
+                if (IsValid(PBS))
+                    FireManager->ApplySuppressionInSphere(PBS, ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
                 DrawDebugSphere(GetWorld(), ImpactPoint, SuppressionRadius, 16, FColor::Yellow, false, 0, 0, 1.5f);

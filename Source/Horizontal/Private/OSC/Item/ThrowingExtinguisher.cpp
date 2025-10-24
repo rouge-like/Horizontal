@@ -11,8 +11,12 @@
 #include "Kismet/GameplayStatics.h"
 #include "OSC/InventoryComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseState.h"
 #include "OSC/Fire/FireManager.h"
+#include "OSC/Sound/SoundManager.h"
 #include "OSC/VFX/VFXManager.h"
+
+class ASoundManager;
 
 AThrowingExtinguisher::AThrowingExtinguisher()
 {
@@ -390,7 +394,8 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
     CollisionComponent->SetPhysicsLinearVelocity(FVector::ZeroVector);
     CollisionComponent->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 
-    if (AActor* Thrower = LastThrowingActor.Get())
+    APlayerBase* Thrower = LastThrowingActor.Get();
+    if (IsValid(Thrower))
     {
         CollisionComponent->IgnoreActorWhenMoving(Thrower, false);
     }
@@ -398,12 +403,22 @@ void AThrowingExtinguisher::HandleProjectileStop(const FHitResult& ImpactResult)
 
 
     AFireManager* FireManager = Cast<AFireManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AFireManager::StaticClass()));
-    FireManager->ApplySuppressionInSphere(GetActorLocation(), HitRadius, 100);
+
+    APlayerBaseState* PBS = Thrower->GetPlayerState<APlayerBaseState>();
+
+    if (IsValid(PBS) && IsValid(FireManager))
+        FireManager->ApplySuppressionInSphere(PBS, GetActorLocation(), HitRadius, 100);
     
     HandlePickupAvailabilityChanged();
 
     AVFXManager* VFXManager = Cast<AVFXManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AVFXManager::StaticClass()));
     VFXManager->SpawnVFX(VFXName, GetActorLocation(), GetActorRotation(), FVector(HitRadius / 100.f));
+
+    ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("BottleBreak")), GetActorLocation());
+    SoundManager->SpawnSoundAtLocation(FName(TEXT("WaterSplash")), GetActorLocation());
+    
+    Destroy();
 }
 
 

@@ -44,10 +44,9 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	// 이전에 조준했던 대상의 UI를 먼저 끕니다.
 	if (FocusedInteractable.IsValid())
 	{
-		// 이제 어떤 액터든 상관없이 WidgetComponent를 찾아서 끕니다.
+		// 컴포넌트가 직접 UI를 가지고 있으므로, 액터를 캐스팅할 필요가 없음
 		if (FocusedInteractable->InteractionUI)
 		{
-		
 			FocusedInteractable->InteractionUI->SetVisibility(false);
 		}
 	}
@@ -72,12 +71,11 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		// 부딪힌 액터에서 'UInteractableComponentBase'를 찾음
 		UInteractableComponentBase* FoundComp = HitResult.GetActor()->FindComponentByClass<UInteractableComponentBase>();
 
-		// --- 여기가 수정된 부분입니다 ---
 		if (FoundComp && FoundComp->IsInteractable())
 		{
 			FocusedInteractable = FoundComp;
-
-			// 컴포넌트가 직접 가진 UI를 켭니다.
+            
+			// 컴포넌트가 직접 소유한 'InteractionUI' 변수를 바로 사용합니다.
 			if (FoundComp->InteractionUI)
 			{
 				FoundComp->InteractionUI->SetVisibility(true);

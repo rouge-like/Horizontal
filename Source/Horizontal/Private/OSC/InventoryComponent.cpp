@@ -3,7 +3,7 @@
 #include "EnhancedInputComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
-#include "OSC/UsableItemBase.h"
+#include "OSC/Item/UsableItemBase.h"
 #include "OSC/Item/AimableItemBase.h"
 
 UInventoryComponent::UInventoryComponent()

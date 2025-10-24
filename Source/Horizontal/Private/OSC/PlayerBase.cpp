@@ -4,14 +4,13 @@
 #include "InputAction.h"
 #include "Net/UnrealNetwork.h"
 #include "CollisionShape.h"
-#include "NiagaraComponent.h"
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "Khc/Player/PlayerInteractionComponent.h"
 #include "Math/UnrealMathUtility.h"
 #include "OSC/InventoryComponent.h"
-#include "OSC/UsableItemBase.h"
+#include "OSC/Item/UsableItemBase.h"
 
 APlayerBase::APlayerBase()
 {
@@ -86,6 +85,16 @@ void APlayerBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 	DOREPLIFETIME(APlayerBase, bIsSprinting);
 	DOREPLIFETIME(APlayerBase, HandsState);
+}
+
+void APlayerBase::UnPossessed()
+{
+	Super::UnPossessed();
+
+	if (bIsSprinting) bIsSprinting = false;
+	if (bIsCrouched) UnCrouch();
+	
+	GetCharacterMovement()->StopMovementImmediately();
 }
 
 void APlayerBase::RefreshMovementSpeed()

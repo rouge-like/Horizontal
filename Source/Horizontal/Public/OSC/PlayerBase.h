@@ -32,6 +32,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void UnPossessed() override;
 
 	bool IsSprinting() const { return bIsSprinting; }
 	bool IsCoveringMouth() const { return HandsState == EHandsState::CoveringMouth; }
@@ -132,5 +133,6 @@ protected:
 	UFUNCTION()
 	void OnRep_IsSprinting();
 
+	UPROPERTY()
 	class UPlayerInteractionComponent* InteractionComponent;
 };
