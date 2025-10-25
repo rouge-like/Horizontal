@@ -76,6 +76,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void SetBurnParams(const FVector& InCenter, float InRadius, float InEdgeWidth, float InIntensityG);
 
+	UFUNCTION(BlueprintCallable, Category="Fire")
+	void SetMPCFire(UMaterialParameterCollection* InMPC) { MPC_Fire = InMPC; }
+
 private:
 	// === 내부 상태 ===                       
 	float Elapsed = 0.f;

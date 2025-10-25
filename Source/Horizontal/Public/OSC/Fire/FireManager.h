@@ -189,7 +189,12 @@ private:
 
     void ApplySuppressionInSphereRecursive(APlayerBaseState* PlayerState, int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
     bool ApplySuppressionToCell(int32 CellIndex, float SuppressionAmount);
+  
+    void FreezeBurnMaterialAtCell(int32 CellIndex);
+    void ClearBurnMIForCell(int32 CellIndex);
 
+
+    
     UPROPERTY(Transient)
     TWeakObjectPtr<AVFXManager> VFXManager;
 
@@ -198,4 +203,15 @@ private:
 
     UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
     UMaterialInterface* BurnMaterial = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
+    UMaterialParameterCollection* MPC_Fire = nullptr;
+
+   
+
+    //런타임 데이터. 빈쯤 탄 상태 고정, 슬롯 캐쉬
+    UPROPERTY(Transient)
+    TMap<TWeakObjectPtr<UPrimitiveComponent>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICache;
+    TMap<TTuple<TWeakObjectPtr<UMeshComponent>, int32>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICacheBySlot;
+
 };

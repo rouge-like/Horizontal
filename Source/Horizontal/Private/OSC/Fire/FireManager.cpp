@@ -915,6 +915,12 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     }
 
     SpawnedActor->SetVFXName(VFXName);
+    //전역 파리미터 갱신
+    if (MPC_Fire)
+    {
+        SpawnedActor->SetMPCFire(MPC_Fire); 
+    }
+    
     ActiveFireVFXActors.Add(CellIndex, SpawnedActor);
     Cell.ActiveEffect = SpawnedActor;
 
@@ -922,42 +928,77 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     if (BurnMaterial)
     {
         UPrimitiveComponent* PrimComp = Cell.AttachedComponent.Get();
-        if (PrimComp)
+        if (UMeshComponent* MC = Cast<UMeshComponent>(PrimComp))
         {
-            if (UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(PrimComp))
+            const int32 NumSlots = MC->GetNumMaterials();
+
+            auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI)
             {
-                UMaterialInstanceDynamic* DMI = SMC->CreateDynamicMaterialInstance(0, BurnMaterial);
-                if (DMI)
-                {
-                    // 초기 파라미터 세팅
-                    DMI->SetScalarParameterValue(TEXT("BurnRadius"), 0.f);
-                    DMI->SetScalarParameterValue(TEXT("EdgeWidth"), 80.f);
-                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
-                }
-            }
-            else if (USkeletalMeshComponent* SKC = Cast<USkeletalMeshComponent>(PrimComp))
+                DMI->SetScalarParameterValue(TEXT("BurnRadius"),      0.f);
+                DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       80.f);
+                DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
+
+                DMI->SetScalarParameterValue(TEXT("UseLocalParams"),  0.f);
+                DMI->SetScalarParameterValue(TEXT("Extinguished"),    0.f);
+            };
+
+            for (int32 Slot = 0; Slot < NumSlots; ++Slot)
             {
-                UMaterialInstanceDynamic* DMI = SKC->CreateDynamicMaterialInstance(0, BurnMaterial);
-                if (DMI)
+                const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+
+                // 1) 슬롯 캐시에 이미 MID가 있고 유효하면 "재사용"
+                if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
                 {
-                    DMI->SetScalarParameterValue(TEXT("BurnRadius"), 0.f);
-                    DMI->SetScalarParameterValue(TEXT("EdgeWidth"), 80.f);
-                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
+                    if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
+                    {
+                        InitBurnParams(Existing);     
+                        continue;                     // 새 MID 생성 금지
+                    }
+                    else
+                    {
+                        BurnMICacheBySlot.Remove(Key); 
+                    }
                 }
+
+                
+                UMaterialInterface* CurMat = MC->GetMaterial(Slot);
+                UMaterialInstanceDynamic* DMI = Cast<UMaterialInstanceDynamic>(CurMat);
+
+               
+                if (!DMI || DMI->Parent != BurnMaterial)
+                {
+                    DMI = MC->CreateDynamicMaterialInstance(Slot, BurnMaterial);
+                    if (!DMI) { continue; }
+                }
+
+                InitBurnParams(DMI);
+
+                // 3) 슬롯 단위 캐시에 저장
+                BurnMICacheBySlot.Add(Key, DMI);
+
+            
             }
         }
     }
 
     // 번짐 시작 (AVFXActor가 MPC_Fire를 제어함)
     const float MaxRadius = Cell.CellExtent.Size();
-    SpawnedActor->EdgeWidth  = 80.f;
-    SpawnedActor->BurnIntensity_G = 6.f;
+    SpawnedActor->SetBurnParams(
+        SpawnLocation,   // Center
+        /*InRadius*/ 0.f,
+        /*InEdgeWidth*/ 80.f,
+        /*InIntensityG*/ 6.f);
+
+    //확산시작
     SpawnedActor->StartBurnAt(SpawnLocation, 0.f, MaxRadius);
 
 }
 
 void AFireManager::DeactivateFireVFX(int32 CellIndex)
 {
+    //프리즈 추가(메테리얼 고정)
+    FreezeBurnMaterialAtCell(CellIndex);
+    
     if (!HasAuthority())
     {
         return;
@@ -984,6 +1025,9 @@ void AFireManager::DeactivateFireVFX(int32 CellIndex)
     {
         Cells[CellIndex].ActiveEffect = nullptr;
     }
+
+    //메테리얼 전환
+    ClearBurnMIForCell(CellIndex);
 }
 
 void AFireManager::ApplySuppressionAtLocation(const FVector& WorldLocation, float SuppressionAmount)
@@ -1094,5 +1138,46 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
     }
 
     return bModified;
+}
+
+void AFireManager::FreezeBurnMaterialAtCell(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    FFireCell& Cell = Cells[CellIndex];
+    UPrimitiveComponent* Prim = Cell.AttachedComponent.Get();
+    if (!Prim) return;
+
+    float FrozenRadius = Cell.CellExtent.Size();   // VFXActor에서 GetCurrentRadius로 읽을수있음
+
+    auto SetFrozen = [&](UMaterialInstanceDynamic* MI)
+    {
+        if (!MI) return;
+        MI->SetScalarParameterValue(TEXT("UseLocalParams"), 1.f);        
+        MI->SetVectorParameterValue(TEXT("LocalCenter"),    Cell.WorldCenter);
+        MI->SetScalarParameterValue(TEXT("LocalRadius"),    FrozenRadius);
+        MI->SetScalarParameterValue(TEXT("LocalEdgeWidth"), 80.f);
+        MI->SetScalarParameterValue(TEXT("Extinguished"),   1.f);        // 불빛만 OFF
+    };
+
+    if (UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Prim))
+    {
+        if (UMaterialInstanceDynamic* MI = BurnMICache.FindRef(SMC).Get())
+            SetFrozen(MI);
+    }
+    else if (USkeletalMeshComponent* SKC = Cast<USkeletalMeshComponent>(Prim))
+    {
+        if (UMaterialInstanceDynamic* MI = BurnMICache.FindRef(SKC).Get())
+            SetFrozen(MI);
+    }
+}
+
+void AFireManager::ClearBurnMIForCell(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    if (UPrimitiveComponent* Prim = Cells[CellIndex].AttachedComponent.Get())
+    {
+        BurnMICache.Remove(Prim);
+      
+    }
 }
 
