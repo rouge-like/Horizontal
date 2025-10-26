@@ -47,14 +47,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|Params")
 	FVector BurnCenter = FVector::ZeroVector;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|Params", meta=(ClampMin="0"))
-	float BurnRadius = 0.f;
+	float BurnRadius = 200.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|Params", meta=(ClampMin="0.001"))
-	float EdgeWidth = 80.f;
+	float EdgeWidth = 150.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|Params", meta=(ClampMin="0"))
-	float BurnIntensity_G = 6.f;
+	float BurnIntensity_G = 15.f;
 	// === 간단한 반경 옵션 ===      
 	UPROPERTY(EditAnywhere, Category="Fire|Anim")
-	float TargetMaxRadius = 600.f;
+	float TargetMaxRadius = 200.f;
 
 	UPROPERTY(EditAnywhere, Category="Fire|Anim")
 	float RadiusGrowSeconds = 1.0f;

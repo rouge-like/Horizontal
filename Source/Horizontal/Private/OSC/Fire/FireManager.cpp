@@ -14,6 +14,7 @@
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/GameStateBase.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 #include "OSC/PlayerBaseState.h"
 #include "OSC/VFX/VFXManager.h"
 #include "OSC/VFX/VFXActor.h"
@@ -30,6 +31,24 @@ void AFireManager::BeginPlay()
 {
     Super::BeginPlay();
     ActiveFireVFXActors.Reset();
+
+    // MPC 기본값 초기화 (문제의 원인 해결)
+    if (MPC_Fire)
+    {
+        if (UWorld* W = GetWorld())
+        {
+            if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
+            {
+                Inst->SetVectorParameterValue(TEXT("BurnCenter"), FVector::ZeroVector);
+                Inst->SetScalarParameterValue(TEXT("BurnRadius"), OnFireBurnRadius);
+                Inst->SetScalarParameterValue(TEXT("EdgeWidth"), OnFireEdgeWidth);
+                Inst->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
+                
+                UE_LOG(LogTemp, Warning, TEXT("FireManager: MPC 초기화 완료 - BurnRadius=%f, BurnIntensity_G=%f"), 
+                    OnFireBurnRadius, OnFireBurnIntensity_G);
+            }
+        }
+    }
 
     if (HasAuthority())
     {
@@ -934,12 +953,15 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
 
             auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI)
             {
-                DMI->SetScalarParameterValue(TEXT("BurnRadius"),      0.f);
-                DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       80.f);
-                DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 6.f);
-
-                DMI->SetScalarParameterValue(TEXT("UseLocalParams"),  0.f);
+                // 불이 붙었을 때 파라미터 설정
+                DMI->SetVectorParameterValue(TEXT("BurnCenter"),      SpawnLocation);  
+                DMI->SetScalarParameterValue(TEXT("BurnRadius"),      OnFireBurnRadius); 
+                DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       OnFireEdgeWidth);
+                DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
                 DMI->SetScalarParameterValue(TEXT("Extinguished"),    0.f);
+                
+                UE_LOG(LogTemp, Warning, TEXT("FireManager: 불 활성화 - BurnCenter=%s, BurnRadius=%f, BurnIntensity_G=%f"), 
+                    *SpawnLocation.ToString(), OnFireBurnRadius, OnFireBurnIntensity_G);
             };
 
             for (int32 Slot = 0; Slot < NumSlots; ++Slot)
@@ -985,9 +1007,9 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     const float MaxRadius = Cell.CellExtent.Size();
     SpawnedActor->SetBurnParams(
         SpawnLocation,   // Center
-        /*InRadius*/ 0.f,
-        /*InEdgeWidth*/ 80.f,
-        /*InIntensityG*/ 6.f);
+        /*InRadius*/ OnFireBurnRadius,  // 기존 파라미터 사용
+        /*InEdgeWidth*/ OnFireEdgeWidth,
+        /*InIntensityG*/ OnFireBurnIntensity_G);
 
     //확산시작
     SpawnedActor->StartBurnAt(SpawnLocation, 0.f, MaxRadius);
@@ -1142,33 +1164,97 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
 
 void AFireManager::FreezeBurnMaterialAtCell(int32 CellIndex)
 {
+    // 점진적 소화 애니메이션 시작
+    StartExtinguishAnimation(CellIndex);
+}
+
+void AFireManager::StartExtinguishAnimation(int32 CellIndex)
+{
     if (!Cells.IsValidIndex(CellIndex)) return;
+    
+    // 기존 타이머가 있다면 제거
+    if (FTimerHandle* ExistingTimer = ExtinguishAnimationTimers.Find(CellIndex))
+    {
+        GetWorldTimerManager().ClearTimer(*ExistingTimer);
+    }
+    
+    // 애니메이션 진행률 초기화
+    ExtinguishAnimationProgress.Add(CellIndex, 0.0f);
+    
+    
+    // 타이머 설정 (0.05초마다 업데이트)
+    FTimerHandle TimerHandle;
+    FTimerDelegate TimerDelegate;
+    TimerDelegate.BindUFunction(this, FName("UpdateExtinguishAnimation"), CellIndex);
+    GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 0.05f, true);
+    
+    ExtinguishAnimationTimers.Add(CellIndex, TimerHandle);
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 시작 - CellIndex=%d"), CellIndex);
+}
+
+void AFireManager::UpdateExtinguishAnimation(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+
+    float* ProgressPtr = ExtinguishAnimationProgress.Find(CellIndex);
+    if (!ProgressPtr) return;
+    float& Progress = *ProgressPtr;
+
+    Progress += 0.05f / ExtinguishAnimationDuration;  
+    if (Progress >= 1.0f) { Progress = 1.0f; CompleteExtinguishAnimation(CellIndex); return; }
+
     FFireCell& Cell = Cells[CellIndex];
     UPrimitiveComponent* Prim = Cell.AttachedComponent.Get();
     if (!Prim) return;
 
-    float FrozenRadius = Cell.CellExtent.Size();   // VFXActor에서 GetCurrentRadius로 읽을수있음
-
-    auto SetFrozen = [&](UMaterialInstanceDynamic* MI)
+    auto UpdateMaterial = [&](UMaterialInstanceDynamic* MI)
     {
         if (!MI) return;
-        MI->SetScalarParameterValue(TEXT("UseLocalParams"), 1.f);        
-        MI->SetVectorParameterValue(TEXT("LocalCenter"),    Cell.WorldCenter);
-        MI->SetScalarParameterValue(TEXT("LocalRadius"),    FrozenRadius);
-        MI->SetScalarParameterValue(TEXT("LocalEdgeWidth"), 80.f);
-        MI->SetScalarParameterValue(TEXT("Extinguished"),   1.f);        // 불빛만 OFF
+
+        // 0→1로 ‘소화’ 진행
+        const float ExtVal = Progress;
+        // 강도는 점차 0으로
+        const float Intensity = FMath::Lerp(OnFireBurnIntensity_G, 0.0f, Progress);
+
+        MI->SetScalarParameterValue(TEXT("Extinguished"),    ExtVal);
+        MI->SetScalarParameterValue(TEXT("BurnIntensity_G"), Intensity);
+
+        
     };
 
-    if (UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(Prim))
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
     {
-        if (UMaterialInstanceDynamic* MI = BurnMICache.FindRef(SMC).Get())
-            SetFrozen(MI);
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+            {
+                if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
+                {
+                    UpdateMaterial(Existing);
+                }
+            }
+        }
     }
-    else if (USkeletalMeshComponent* SKC = Cast<USkeletalMeshComponent>(Prim))
+}
+
+void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    
+    // 타이머 정리
+    if (FTimerHandle* TimerPtr = ExtinguishAnimationTimers.Find(CellIndex))
     {
-        if (UMaterialInstanceDynamic* MI = BurnMICache.FindRef(SKC).Get())
-            SetFrozen(MI);
+        GetWorldTimerManager().ClearTimer(*TimerPtr);
+        ExtinguishAnimationTimers.Remove(CellIndex);
     }
+    
+    // 진행률 정리
+    ExtinguishAnimationProgress.Remove(CellIndex);
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 완료 - CellIndex=%d"), CellIndex);
 }
 
 void AFireManager::ClearBurnMIForCell(int32 CellIndex)
@@ -1180,4 +1266,5 @@ void AFireManager::ClearBurnMIForCell(int32 CellIndex)
       
     }
 }
+
 

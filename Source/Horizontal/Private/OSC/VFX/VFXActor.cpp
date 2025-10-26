@@ -134,10 +134,14 @@ void AVFXActor::PushToMPC() const
 	{
 		if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
 		{
+			// MPC 기본값을 강제로 덮어쓰기
 			Inst->SetVectorParameterValue(TEXT("BurnCenter"), BurnCenter);
 			Inst->SetScalarParameterValue(TEXT("BurnRadius"), BurnRadius);
 			Inst->SetScalarParameterValue(TEXT("EdgeWidth"),  EdgeWidth);
 			Inst->SetScalarParameterValue(TEXT("BurnIntensity_G"), BurnIntensity_G);
+			
+			UE_LOG(LogTemp, Warning, TEXT("VFXActor: MPC Updated - BurnCenter=%s, BurnRadius=%f, BurnIntensity_G=%f"), 
+				*BurnCenter.ToString(), BurnRadius, BurnIntensity_G);
 		}
 	}
 }

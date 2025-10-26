@@ -113,6 +113,18 @@ protected:
 public:
     void ApplySuppressionInSphere(APlayerBaseState* PlayerState, const FVector& Center, float Radius, float SuppressionAmount);
 
+    // 불이 붙었을 때 사용할 파라미터들 (에디터에서 조정 가능)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.0"))
+    float OnFireBurnRadius = 300.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.001"))
+    float OnFireEdgeWidth = 950.f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.0"))
+    float OnFireBurnIntensity_G = 880.f;
+
+    // 불이 꺼질 때 애니메이션 설정
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|ExtinguishAnimation", meta=(ClampMin="0.1"))
+    float ExtinguishAnimationDuration = 1.0f;  // 1초 동안 점진적 변화
+
 protected:
     UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="1.0"))
     float LeafCellSize = 50.0f;
@@ -192,6 +204,16 @@ private:
   
     void FreezeBurnMaterialAtCell(int32 CellIndex);
     void ClearBurnMIForCell(int32 CellIndex);
+    
+    // 점진적 소화 애니메이션 함수들
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void StartExtinguishAnimation(int32 CellIndex);
+    
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void UpdateExtinguishAnimation(int32 CellIndex);
+    
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void CompleteExtinguishAnimation(int32 CellIndex);
 
 
     
@@ -207,11 +229,15 @@ private:
     UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
     UMaterialParameterCollection* MPC_Fire = nullptr;
 
-   
-
     //런타임 데이터. 빈쯤 탄 상태 고정, 슬롯 캐쉬
     UPROPERTY(Transient)
     TMap<TWeakObjectPtr<UPrimitiveComponent>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICache;
     TMap<TTuple<TWeakObjectPtr<UMeshComponent>, int32>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICacheBySlot;
+
+    // 점진적 소화 애니메이션을 위한 데이터
+    UPROPERTY(Transient)
+    TMap<int32, FTimerHandle> ExtinguishAnimationTimers;
+    UPROPERTY(Transient)
+    TMap<int32, float> ExtinguishAnimationProgress;  // 0.0 ~ 1.0
 
 };
