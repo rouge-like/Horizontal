@@ -24,6 +24,19 @@ void UPlayerInteractionComponent::BeginPlay()
 	Super::BeginPlay();
 
 	OwnerCharacter = Cast<ACharacter>(GetOwner());
+
+	if (OwnerCharacter && OwnerCharacter->IsLocallyControlled())
+	{
+		APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
+		if (PC && CrosshairWidgetClass)
+		{
+			CrosshairWidgetInstance = CreateWidget<UUserWidget>(PC, CrosshairWidgetClass);
+			if (CrosshairWidgetInstance)
+			{
+				CrosshairWidgetInstance->AddToViewport();
+			}
+		}
+	}
 }
 
 void UPlayerInteractionComponent::SetupPlayerInput(class UInputComponent* PlayerInputComponent)
@@ -81,6 +94,22 @@ void UPlayerInteractionComponent::TickComponent(float DeltaTime, ELevelTick Tick
 				FoundComp->InteractionUI->SetVisibility(true);
 			}
 		}
+	}
+}
+
+void UPlayerInteractionComponent::ShowCrosshair()
+{
+	if (CrosshairWidgetInstance)
+	{
+		CrosshairWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UPlayerInteractionComponent::HideCrosshair()
+{
+	if (CrosshairWidgetInstance)
+	{
+		CrosshairWidgetInstance->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 

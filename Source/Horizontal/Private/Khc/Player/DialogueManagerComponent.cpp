@@ -17,6 +17,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseController.h"
 #include "OSC/PlayerBaseState.h"
+#include <Khc/Player/PlayerInteractionComponent.h>
 
 class AAIController;
 
@@ -99,15 +100,28 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			}
 		}
 	}
+
 	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
-	
-	// if (DialogueRow->EventTag == "MoveToSafeZone")
-	// {
-	// 	if (PlayerState)
-	// 	{
-	// 		PlayerState->AddRecueScore(1);
-	// 	}
-	// }
+
+	if (DialogueRow && PlayerState && !DialogueRow->EventTag.IsNone())
+	{
+		FString EventTagString = DialogueRow->EventTag.ToString();
+
+		const FString Prefix = TEXT("WrongScore_");
+
+		if (EventTagString.StartsWith(Prefix))
+		{
+			FString ScoreValueString = EventTagString.RightChop(Prefix.Len());
+
+			int32 ScoreValue = FCString::Atoi(*ScoreValueString);
+
+			if (ScoreValue != 0)
+			{
+				PlayerState->AddWrongScore(ScoreValue);
+				UE_LOG(LogTemp, Warning, TEXT("'%s' : %d"), *EventTagString, ScoreValue);
+			}
+		}
+	}
 
 	if (DialogueRow->EventTag == "OpenDoorBad")
 	{
@@ -116,6 +130,7 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			PlayerState->AddWrongScore(10);
 		}
 	}
+
 	Client_EndDialogue();
 }
 
@@ -220,11 +235,21 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	{
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (!PC) return;
+
+		ACharacter* player = PC->GetCharacter();
 		
-		PC->FlushPressedKeys();
-		if (ACharacter* PlayerCharacter = PC->GetCharacter())
+		if (player)
 		{
-			PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+			if (UPlayerInteractionComponent* InteractionComp = player->FindComponentByClass<UPlayerInteractionComponent>())
+			{
+				InteractionComp->HideCrosshair();
+			}
+		}
+
+		PC->FlushPressedKeys();
+		if (player)
+		{
+			player->GetCharacterMovement()->StopMovementImmediately();
 		}
 		
 		DialogueWidgetInstance = CreateWidget<UDialogueWidget>(PC, DialogueWidgetClass);
@@ -263,6 +288,15 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 		{
 			DialogueWidgetInstance->ShowImage(1);
 		}
+		else if (CurrentDialogueLabel == "MainDoor1_2")
+		{
+			DialogueWidgetInstance->ShowImage(2);
+		}
+		else if (CurrentDialogueLabel == "FireExt_6")
+		{
+			DialogueWidgetInstance->ShowImage(3);
+		}
+
 	}
 }
 
@@ -292,6 +326,14 @@ void UDialogueManagerComponent::Client_EndDialogue_Implementation()
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (PC)
 		{
+			if (ACharacter* PlayerCharacter = PC->GetCharacter())
+			{
+				if (UPlayerInteractionComponent* InteractionComp = PlayerCharacter->FindComponentByClass<UPlayerInteractionComponent>())
+				{
+					InteractionComp->ShowCrosshair();
+				}
+			}
+
 			PC->SetInputMode(FInputModeGameOnly()); // 입력 모드를 다시 게임 전용으로
 			PC->bShowMouseCursor = false;
 		}
