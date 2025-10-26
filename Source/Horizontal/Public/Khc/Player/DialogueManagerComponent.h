@@ -56,13 +56,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Dialogue")
 	TSubclassOf<UDialogueWidget> DialogueWidgetClass;
 
-	// ---- 서버에서만 관리되는 상태 변수들 ----
 	UPROPERTY()
 	FName CurrentDialogueLabel;
 
 	UPROPERTY()
 	TWeakObjectPtr<UInteractableComponentBase> CurrentInteractableComponent;
-	// ---- 클라이언트에서만 존재하는 변수들 ----
+
 	UPROPERTY()
 	TObjectPtr<UDialogueWidget> DialogueWidgetInstance;
 };
