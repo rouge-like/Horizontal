@@ -121,11 +121,12 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 			ResultUI->RescueScoreItem->Value->SetText(FText::FromString(RescueScore));
 			ResultUI->RescueScoreItem->Evaluation->SetText(FText::FromString(RescueScoreEvaluation));
 
-			FString ExtinguishScore = FString::Printf(TEXT("%.f점"), PBS->ExtinguishScore);
+			FString ExtinguishScore = FString::Printf(TEXT("%.1f점"), PBS->ExtinguishScore);
 			FString ExtinguishScoreEvaluation = PBS->GetEvaluation(EValueType::ExtinguishScore);
 			ResultUI->ExtinguishScoreItem->Title->SetText(FText::FromString(TEXT("초기 진압")));
 			ResultUI->ExtinguishScoreItem->Value->SetText(FText::FromString(ExtinguishScore));
 			ResultUI->ExtinguishScoreItem->Evaluation->SetText(FText::FromString(ExtinguishScoreEvaluation));
+			
 
 			FString WrongScore = FString::Printf(TEXT("%.1f점"), PBS->WrongScore);
 			FString WrongScoreEvaluation = PBS->GetEvaluation(EValueType::WrongScore);

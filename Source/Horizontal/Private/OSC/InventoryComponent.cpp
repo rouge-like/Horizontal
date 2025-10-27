@@ -3,6 +3,7 @@
 #include "EnhancedInputComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseController.h"
 #include "OSC/Item/UsableItemBase.h"
 #include "OSC/Item/AimableItemBase.h"
 
@@ -15,16 +16,19 @@ UInventoryComponent::UInventoryComponent()
 void UInventoryComponent::InitializeComponent()
 {
     Super::InitializeComponent();
-    
+
     OwningPlayer = Cast<APlayerBase>(GetOwner());
     OwningPlayer->OnSetUpPlayerInputDelegate.AddDynamic(this, &UInventoryComponent::OnSetUpPlayerInput);
-
+    
     SetIsReplicated(true);
 }
 
 void UInventoryComponent::BeginPlay()
 {
     Super::BeginPlay();
+    
+    
+    OwningPlayerController = Cast<APlayerBaseController>(OwningPlayer->GetController());
 
 }
 
@@ -195,6 +199,10 @@ void UInventoryComponent::RemoveItemInternal(int32 ItemIndex, bool bCallOnDrop)
 
 void UInventoryComponent::StartUseItem()
 {
+    if (IsValid(OwningPlayerController))
+    {
+        if (OwningPlayerController->bShowMouseCursor) return;
+    }
     if (AUsableItemBase* Item = SelectedItem.Get())
     {
         Item->StartUse();
@@ -203,6 +211,12 @@ void UInventoryComponent::StartUseItem()
 
 void UInventoryComponent::StopUseItem()
 {
+    if (IsValid(OwningPlayerController))
+    {
+        if (OwningPlayerController->bShowMouseCursor) return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("%s"), *OwningPlayerController->GetCurrentInputModeDebugString());
     if (AUsableItemBase* Item = SelectedItem.Get())
     {
         Item->StopUse();

@@ -21,7 +21,6 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
-
 	// 버튼이 클릭되었을 때 호출될 함수
 	UFUNCTION()
 	void OnButtonClicked();
