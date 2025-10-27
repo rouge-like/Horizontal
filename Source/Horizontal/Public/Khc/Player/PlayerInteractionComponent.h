@@ -29,6 +29,9 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
+	void ShowCrosshair();
+	void HideCrosshair();
+
 
 protected:
 	// 'E' 키를 눌렀을 때 클라이언트에서 실행될 함수
@@ -48,4 +51,10 @@ private:
     
 	UPROPERTY()
 	TObjectPtr<ACharacter> OwnerCharacter;
+
+	UPROPERTY(EditAnywhere, Category = "Interaction|UI")
+	TSubclassOf<class UUserWidget> CrosshairWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> CrosshairWidgetInstance;
 };

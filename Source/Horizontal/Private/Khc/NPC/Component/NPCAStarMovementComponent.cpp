@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "DrawDebugHelpers.h"
 #include "Khc/NPC/NPCBase.h"
+#include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -17,6 +18,7 @@ void UNPCAStarMovementComponent::BeginPlay()
 {
     NavigationManager = Cast<AAStarNavigationManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarNavigationManager::StaticClass()));
 	//GridManager = Cast<AAStarGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AAStarGridManager::StaticClass()));
+    OwnerPawn = Cast<ANPCBase>(GetOwner());
 }
 
 void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -47,10 +49,11 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
         }
     }
 
+
     // --- 경로 따라가기 로직 ---
     if (bIsMoving && CurrentPath.IsValidIndex(CurrentPathIndex))
     {
-        APawn* OwnerPawn = Cast<APawn>(GetOwner());
+
         if (!OwnerPawn) return;
 
         FVector CurrentLocation = OwnerPawn->GetActorLocation();
@@ -75,27 +78,31 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
             Waypoint = CurrentPath[CurrentPathIndex];
         }
 
-        // 2. 회전: 다음 경유지를 향해 부드럽게 몸을 돌림
-        // FVector DirectionToWaypoint = (Waypoint - CurrentLocation).GetSafeNormal();
-        // FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(CurrentLocation, Waypoint);
-        //
-        // // Z축 회전은 필요 없으므로 Yaw 값만 사용
-        // FRotator CurrentRotation = OwnerPawn->GetActorRotation();
-        // FRotator SmoothedRotation = FMath::RInterpTo(CurrentRotation, TargetRotation, DeltaTime, 5.0f); // 5.0f는 회전 속도 (조절 가능)
-        //
-        // OwnerPawn->SetActorRotation(FRotator(0.f, SmoothedRotation.Yaw, 0.f));
-        //
-        // // 3. 전진: 현재 캐릭터가 바라보는 '앞 방향'으로 이동 입력을 줌
-        // OwnerPawn->AddMovementInput(OwnerPawn->GetActorForwardVector());
-
         FVector Direction = (Waypoint - CurrentLocation).GetSafeNormal();
         OwnerPawn->AddMovementInput(Direction);
     }
     else if(bIsMoving) // 경로가 끝났지만 아직 이동 중 플래그가 켜져 있다면
     {
-        // 도착 판정 로직을 한 번 더 수행하여 이동을 확실히 끝냄
         if (FVector::Dist2D(GetOwner()->GetActorLocation(), Destination) < 150.f)
         {
+            bIsMoving = false;
+            OnMovementFinished.Broadcast();
+        }
+    }
+
+    if (bIsMoving)
+    {
+        const float StuckVelocityThreshold = 10.0f; 
+        const float StuckDistanceToGoal = 250.0f; 
+
+        float CurrentSpeed = OwnerPawn->GetVelocity().Size2D();
+        float DistanceToGoal = FVector::Dist2D(OwnerPawn->GetActorLocation(), Destination);
+
+        if (CurrentSpeed < StuckVelocityThreshold && DistanceToGoal < StuckDistanceToGoal)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("NPC '%s' is stuck near goal. Forcing arrival."), *OwnerPawn->GetName());
+            
+            // 강제로 도착한 것으로 판정
             bIsMoving = false;
             OnMovementFinished.Broadcast();
         }
@@ -113,7 +120,6 @@ void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
     Destination = NewDestination;
     CurrentPathIndex = 0;
 
-    // 이제 GridManager가 아닌, NavigationManager의 FindPath를 직접 호출합니다.
     float bPathFound = NavigationManager->FindPath(GetOwner()->GetActorLocation(), Destination, CurrentPath);
 
     if (bPathFound > 0)
@@ -125,6 +131,8 @@ void UNPCAStarMovementComponent::StartMovingTo(const FVector& NewDestination)
     {
         bIsMoving = false;
         UE_LOG(LogTemp, Warning, TEXT("Path to destination could not be found!"));
-        //Cast<ANPCBase>(GetOwner())->InteractionComp->SetInteractable(true);
+        auto owner =Cast<ANPCBase>(GetOwner()); 
+        owner->FSMComp->SetState(ENPCState::Idle);
+        owner->SetReInteractable();
     }
 }

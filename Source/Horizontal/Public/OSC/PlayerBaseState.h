@@ -93,13 +93,13 @@ protected:
 	float RepNoMaskTime = 0;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_UpdateValue)
-	int32 RepRescueScore = 0;
+	float RepRescueScore = 0;
 
 	UPROPERTY(ReplicatedUsing = OnRep_UpdateValue)
 	float RepExtinguishScore = 0;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_UpdateValue)
-	int32 RepWrongScore = 0;
+	float RepWrongScore = 0;
 	
 	UPROPERTY(EditAnywhere)
 	TMap<EValueType, FEvaluationData> EvaluationMap;
@@ -125,13 +125,13 @@ public:
 	float NoMaskTime = 0;
 	
 	UPROPERTY(VisibleAnywhere)
-	int32 RescueScore = 0;
+	float RescueScore = 0;
 
 	UPROPERTY(VisibleAnywhere)
 	float ExtinguishScore = 0;
 	
 	UPROPERTY(VisibleAnywhere)
-	int32 WrongScore = 0;
+	float WrongScore = 0;
 
 	UFUNCTION()
 	void UpdateValue();
@@ -140,9 +140,9 @@ public:
 	float GetSize() const { return Size; };
 	float GetSum() const {return InFireTime + RunningTime + NotCrouchedTime + NoMaskTime + PlayTime; };
 	void AddFireTime(float DeltaTime);
-	void AddRecueScore(int32 Value);
+	void AddRecueScore(float Value);
 	void AddExtinguishScore(float Value);
-	void AddWrongScore(int32 Value);
+	void AddWrongScore(float Value);
 	
 	FString GetEvaluation(EValueType EvaluationKey);
 };

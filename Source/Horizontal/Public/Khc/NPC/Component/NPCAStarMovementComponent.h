@@ -29,9 +29,6 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
 
-	//UPROPERTY()
-	//class AAStarGridManager* GridManager;
-
 	UPROPERTY()
 	class AAStarNavigationManager* NavigationManager;
 
@@ -41,4 +38,6 @@ public:
 
 	FVector Destination;
 	bool bIsMoving = false;
+
+	class ANPCBase* OwnerPawn;
 };

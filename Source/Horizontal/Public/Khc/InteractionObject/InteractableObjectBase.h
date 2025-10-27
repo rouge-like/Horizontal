@@ -32,26 +32,38 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_IsMove)
 	bool bIsMove;
 
+	UPROPERTY(ReplicatedUsing = OnRep_ObstacleMove)
+	bool bObstacleMove; // 장애물 이동용
+
+	UPROPERTY(ReplicatedUsing = OnRep_ObstacleMove)
+	bool bMainDoorMove; // 장애물 이동용
+
 	UFUNCTION()
 	void OnRep_IsMove();
 
+	UFUNCTION()
+	void OnRep_ObstacleMove();
+
+	UFUNCTION()
+	void OnRep_MainDoorMove();
+	
+	FVector ObstacleTargetLocation;
+	FRotator ObstacleTargetRotation;
+
 public:
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
-	// 상호작용 가능 UI를 표시할 위젯 컴포넌트
-	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	// TObjectPtr<class UWidgetComponent> InteractionUI;
-
 protected:
-	// 블루프린트에서 외형을 바꿀 수 있는 스태틱 메시 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UStaticMeshComponent> MeshComponent;
 
-	// 상호작용 로직을 담당하는 범용 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UObjectInteractionComponent> InteractionComponent;
 
 
+	float originRotYaw = 0.f;
+
+	UPROPERTY(EditAnywhere)
+	AStaticMeshActor* MainDoor;
 
 };

@@ -38,7 +38,7 @@ protected:
 
 	// [클라이언트] 서버의 명령을 받아 UI를 업데이트하는 함수
 	UFUNCTION(Client, Reliable)
-	void Client_UpdateDialogueUI(const FDialogueRow& DialogueData);
+	void Client_UpdateDialogueUI(FName DialogueLabel, const FDialogueRow& DialogueData);
 
 	// [클라이언트] 대화 종료를 알리는 함수
 	UFUNCTION(Client, Reliable)
@@ -64,4 +64,8 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UDialogueWidget> DialogueWidgetInstance;
+
+	UFUNCTION()
+	void OnNPCMovementFinished();
+	
 };

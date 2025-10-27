@@ -115,7 +115,7 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 			ResultUI->NoMaskTimeItem->Value->SetText(FText::FromString(NoMaskTime));
 			ResultUI->NoMaskTimeItem->Evaluation->SetText(FText::FromString(NoMaskTimeEvaluation));
 
-			FString RescueScore = FString::Printf(TEXT("%d점"), PBS->RescueScore);
+			FString RescueScore = FString::Printf(TEXT("%.1f점"), PBS->RescueScore);
 			FString RescueScoreEvaluation = PBS->GetEvaluation(EValueType::RescueScore);
 			ResultUI->RescueScoreItem->Title->SetText(FText::FromString(TEXT("구조")));
 			ResultUI->RescueScoreItem->Value->SetText(FText::FromString(RescueScore));
@@ -127,8 +127,8 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 			ResultUI->ExtinguishScoreItem->Value->SetText(FText::FromString(ExtinguishScore));
 			ResultUI->ExtinguishScoreItem->Evaluation->SetText(FText::FromString(ExtinguishScoreEvaluation));
 
-			FString WrongScore = FString::Printf(TEXT("%d점"), PBS->WrongScore);
-			FString WrongScoreEvaluation = PBS->GetEvaluation(EValueType::ExtinguishScore);
+			FString WrongScore = FString::Printf(TEXT("%.1f점"), PBS->WrongScore);
+			FString WrongScoreEvaluation = PBS->GetEvaluation(EValueType::WrongScore);
 			ResultUI->WrongScoreItem->Title->SetText(FText::FromString(TEXT("잘못된 행동")));
 			ResultUI->WrongScoreItem->Value->SetText(FText::FromString(WrongScore));
 			ResultUI->WrongScoreItem->Evaluation->SetText(FText::FromString(WrongScoreEvaluation));

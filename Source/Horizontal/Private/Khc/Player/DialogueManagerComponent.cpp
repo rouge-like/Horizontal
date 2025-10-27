@@ -12,10 +12,12 @@
 #include "Khc/Gimmick/AStarNavigationManager.h"
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Khc/NPC/NPCBase.h"
+#include "Khc/NPC/Component/NPCAStarMovementComponent.h"
 #include "Khc/NPC/Component/NPCFSMComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseController.h"
 #include "OSC/PlayerBaseState.h"
+#include <Khc/Player/PlayerInteractionComponent.h>
 
 class AAIController;
 
@@ -57,6 +59,12 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 			{
 				NPCController->SetFocus(PC->GetPawn());
 			}
+
+			if (NPC->AStarMovementComp)
+			{
+				NPC->AStarMovementComp->OnMovementFinished.RemoveDynamic(this, &UDialogueManagerComponent::OnNPCMovementFinished);
+				NPC->AStarMovementComp->OnMovementFinished.AddDynamic(this, &UDialogueManagerComponent::OnNPCMovementFinished);
+			}
 		}
 	}
 	
@@ -65,7 +73,7 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 		FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
 		if (Row)
 		{
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 	}
 }
@@ -74,15 +82,12 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 {
 	if (DialogueRow && !DialogueRow->EventTag.IsNone())
 	{
-		// 현재 상호작용 중인 대상 액터를 가져옴
 		if (CurrentInteractableComponent.IsValid())
 		{
-			// "이벤트가 발생했다!" 라고 방송. 이 신호를 듣는 액터가 스스로 행동함.
 			OnDialogueEvent.Broadcast(DialogueRow->EventTag, CurrentInteractableComponent->GetOwner());
 		}
 	}
     
-	// 2. 만약 상호작용 대상이 NPC였다면, 추가로 FSM 상태 변경
 	if (UNPCInteractionComponent* NPCComp = Cast<UNPCInteractionComponent>(CurrentInteractableComponent.Get()))
 	{
 		ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
@@ -95,13 +100,26 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			}
 		}
 	}
+
 	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
-	
-	if (DialogueRow->EventTag == "MoveToSafeZone")
+
+	if (DialogueRow && PlayerState && !DialogueRow->EventTag.IsNone())
 	{
-		if (PlayerState)
+		FString EventTagString = DialogueRow->EventTag.ToString();
+
+		const FString Prefix = TEXT("WrongScore_");
+
+		if (EventTagString.StartsWith(Prefix))
 		{
-			PlayerState->AddRecueScore(1);
+			FString ScoreValueString = EventTagString.RightChop(Prefix.Len());
+
+			int32 ScoreValue = FCString::Atoi(*ScoreValueString);
+
+			if (ScoreValue != 0)
+			{
+				PlayerState->AddWrongScore(ScoreValue);
+				UE_LOG(LogTemp, Warning, TEXT("'%s' : %d"), *EventTagString, ScoreValue);
+			}
 		}
 	}
 
@@ -112,15 +130,35 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			PlayerState->AddWrongScore(10);
 		}
 	}
-	
 
-	// 3. 모든 클라이언트에게 대화 종료를 알림
 	Client_EndDialogue();
 }
 
 void UDialogueManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void UDialogueManagerComponent::OnNPCMovementFinished()
+{
+	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
+	if (PlayerState)
+	{
+		PlayerState->AddRecueScore(1);
+		UE_LOG(LogTemp, Warning, TEXT("AddResqueScore + 1"));
+	}
+
+	if (CurrentInteractableComponent.IsValid())
+	{
+		if (UNPCInteractionComponent* NPCComp = Cast<UNPCInteractionComponent>(CurrentInteractableComponent.Get()))
+		{
+			ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
+			if (NPC && NPC->AStarMovementComp)
+			{
+				NPC->AStarMovementComp->OnMovementFinished.RemoveDynamic(this, &UDialogueManagerComponent::OnNPCMovementFinished);
+			}
+		}
+	}
 }
 
 void UDialogueManagerComponent::Server_ProcessChoice_Implementation(FName JumpToLabel)
@@ -130,15 +168,13 @@ void UDialogueManagerComponent::Server_ProcessChoice_Implementation(FName JumpTo
 	FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
 	if (Row)
 	{
-		// 선택지로 점프한 결과가 End 타입일 수도 있으므로, 여기서도 확인
 		if (Row->DialogueType == EDialogueDataType::End || Row->DialogueType == EDialogueDataType::EndGood || Row->DialogueType == EDialogueDataType::EndBad)
 		{
-			// End 타입이면 마지막 대사를 일단 보여주고, 다음 클릭 때 종료되도록 함
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 		else // Normal 또는 Choice 타입이면
 		{
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 	}
 	else
@@ -157,15 +193,12 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 		return;
 	}
 
-	// 2. 현재 대사가 End 타입 중 하나인지 확인합니다.
 	if (CurrentRow->DialogueType == EDialogueDataType::End || CurrentRow->DialogueType == EDialogueDataType::EndGood || CurrentRow->DialogueType == EDialogueDataType::EndBad)
 	{
-		// 'End' 타입의 대사를 보고 난 후 클릭한 것이므로, HandleDialogueEnd를 호출하여 대화를 완전히 종료합니다.
 		HandleDialogueEnd(CurrentRow);
 		return;
 	}
     
-	// 3. 현재 대사가 End가 아니라면, 다음 대사 Label을 계산합니다.
 	FString CurrentLabelStr = CurrentDialogueLabel.ToString();
 	FString Prefix;
 	FString Suffix;
@@ -183,12 +216,10 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 		return;
 	}
 
-	// 4. 계산된 다음 대사 정보를 찾아옵니다.
 	FDialogueRow* NextRow = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
 	if (NextRow)
 	{
-		// 5. 찾은 다음 대사를 클라이언트에게 보여주라고 명령합니다.
-		Client_UpdateDialogueUI(*NextRow);
+		Client_UpdateDialogueUI(CurrentDialogueLabel, *NextRow);
 	}
 	else
 	{
@@ -196,7 +227,7 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 	}
 }
 
-void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDialogueRow& DialogueData)
+void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(FName DialogueLabel, const FDialogueRow& DialogueData)
 {
 	if (!DialogueWidgetClass) return;
 
@@ -204,11 +235,21 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 	{
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (!PC) return;
+
+		ACharacter* player = PC->GetCharacter();
 		
-		PC->FlushPressedKeys();
-		if (ACharacter* PlayerCharacter = PC->GetCharacter())
+		if (player)
 		{
-			PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+			if (UPlayerInteractionComponent* InteractionComp = player->FindComponentByClass<UPlayerInteractionComponent>())
+			{
+				InteractionComp->HideCrosshair();
+			}
+		}
+
+		PC->FlushPressedKeys();
+		if (player)
+		{
+			player->GetCharacterMovement()->StopMovementImmediately();
 		}
 		
 		DialogueWidgetInstance = CreateWidget<UDialogueWidget>(PC, DialogueWidgetClass);
@@ -239,14 +280,23 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 			break;
 		}
 
-		if (CurrentDialogueLabel == "Door01_3")
+		if (DialogueLabel == "NPC03_7")
 		{
-			DialogueWidgetInstance->ShowImage(0);
+			DialogueWidgetInstance->ShowImage(0, 1000, 600);
 		}
-		else if (CurrentDialogueLabel == "NPC03_7")
+		else if (DialogueLabel == "Door01_2")
 		{
-			DialogueWidgetInstance->ShowImage(1);
+			DialogueWidgetInstance->ShowImage(1, 1000, 600);
 		}
+		else if (DialogueLabel == "MainDoor1_2")
+		{
+			DialogueWidgetInstance->ShowImage(2, 600, 700);
+		}
+		else if (DialogueLabel == "FireExt_6")
+		{
+			DialogueWidgetInstance->ShowImage(3, 600, 700);
+		}
+
 	}
 }
 
@@ -276,6 +326,14 @@ void UDialogueManagerComponent::Client_EndDialogue_Implementation()
 		APlayerController* PC = GetOwner<APlayerController>();
 		if (PC)
 		{
+			if (ACharacter* PlayerCharacter = PC->GetCharacter())
+			{
+				if (UPlayerInteractionComponent* InteractionComp = PlayerCharacter->FindComponentByClass<UPlayerInteractionComponent>())
+				{
+					InteractionComp->ShowCrosshair();
+				}
+			}
+
 			PC->SetInputMode(FInputModeGameOnly()); // 입력 모드를 다시 게임 전용으로
 			PC->bShowMouseCursor = false;
 		}

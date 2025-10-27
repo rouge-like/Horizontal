@@ -133,6 +133,6 @@ protected:
 	UFUNCTION()
 	void OnRep_IsSprinting();
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere)
 	class UPlayerInteractionComponent* InteractionComponent;
 };

@@ -59,7 +59,8 @@ void AUsableItemBase::OnPickup(APlayerBase* InOwner)
     Inventory->AddItem(this);
 
     ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
-    SoundManager->SpawnSoundAtLocation(FName(TEXT("Pickup")), OwningPlayer->GetActorLocation());
+    if (IsValid(SoundManager))
+        SoundManager->SpawnSoundAtLocation(FName(TEXT("Pickup")), OwningPlayer->GetActorLocation());
 }
 
 void AUsableItemBase::OnDrop()

@@ -10,7 +10,6 @@ UInventoryComponent::UInventoryComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
     bWantsInitializeComponent = true;
-    SetIsReplicated(true);
 }
 
 void UInventoryComponent::InitializeComponent()
@@ -20,11 +19,13 @@ void UInventoryComponent::InitializeComponent()
     OwningPlayer = Cast<APlayerBase>(GetOwner());
     OwningPlayer->OnSetUpPlayerInputDelegate.AddDynamic(this, &UInventoryComponent::OnSetUpPlayerInput);
 
+    SetIsReplicated(true);
 }
 
 void UInventoryComponent::BeginPlay()
 {
     Super::BeginPlay();
+
 }
 
 void UInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

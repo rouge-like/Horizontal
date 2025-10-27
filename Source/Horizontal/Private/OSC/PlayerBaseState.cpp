@@ -81,7 +81,7 @@ void APlayerBaseState::AddFireTime(float DeltaTime)
 	InFireTime += DeltaTime;
 }
 
-void APlayerBaseState::AddRecueScore(int32 Value)
+void APlayerBaseState::AddRecueScore(float Value)
 {
 	RescueScore += Value;
 }
@@ -91,7 +91,7 @@ void APlayerBaseState::AddExtinguishScore(float Value)
 	ExtinguishScore += Value;
 }
 
-void APlayerBaseState::AddWrongScore(int32 Value)
+void APlayerBaseState::AddWrongScore(float Value)
 {
 	WrongScore += Value;
 }
