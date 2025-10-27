@@ -64,4 +64,8 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UDialogueWidget> DialogueWidgetInstance;
+
+	UFUNCTION()
+	void OnNPCMovementFinished();
+	
 };
