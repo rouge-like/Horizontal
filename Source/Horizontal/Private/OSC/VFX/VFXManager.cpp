@@ -28,6 +28,25 @@ void AVFXManager::BeginPlay()
 void AVFXManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	const float RadiusPerSec = RadiusGrowStep / FMath::Max(ShellGrowInterval, 0.001f);
+	const float EdgePerSec   = EdgeGrowStep   / FMath::Max(ShellGrowInterval, 0.001f);
+
+	for (auto& Pair : VFXPools)
+	{
+		const FName Name = Pair.Key;
+
+		float& R = AccumRadius.FindOrAdd(Name);
+		float& E = AccumEdge  .FindOrAdd(Name);
+
+		R = FMath::Clamp(R + RadiusPerSec * DeltaTime, 0.f, MaxRadius);
+		E = FMath::Clamp(E + EdgePerSec   * DeltaTime, 0.f, MaxEdgeWidth);
+
+		for (AVFXActor* VFX : Pair.Value.VFXs)
+		{
+			if (!IsValid(VFX) || VFX->IsHidden()) continue;
+			VFX->SetBurnParams(VFX->GetBurnCenter(), R, E, VFX->GetBurnIntensityG());
+		}
+	}
 }
 
 void AVFXManager::InitPool(FName Name)
@@ -79,6 +98,11 @@ AVFXActor* AVFXManager::SpawnVFX(FName Name, const FVector& Location, const FRot
 			VFXActor->SetActorRotation(Rotation);
 			VFXActor->SetActorScale3D(Scale);
 			VFXActor->SetActorTickEnabled(true);
+
+			const float R = AccumRadius.FindRef(Name);
+			const float E = AccumEdge.FindRef(Name);
+			const float I = VFXActor->GetBurnIntensityG();   
+			VFXActor->SetBurnParams(Location, R, E, I);
 			VFXActor->StartVFX();
 
 			bAllUsing = false;
@@ -100,8 +124,14 @@ AVFXActor* AVFXManager::SpawnVFX(FName Name, const FVector& Location, const FRot
 		VFXActor->SetActorHiddenInGame(false);
 		VFXActor->SetActorEnableCollision(false);
 		VFXActor->SetActorTickEnabled(true);
+		
+		const float R = AccumRadius.FindRef(Name);
+		const float E = AccumEdge.FindRef(Name);
+		const float I = VFXActor->GetBurnIntensityG();       
+		VFXActor->SetBurnParams(Location, R, E, I);
 		VFXActor->StartVFX();
 
+		
 		Pool.VFXs.Add(VFXActor);
 		return VFXActor;
 	}

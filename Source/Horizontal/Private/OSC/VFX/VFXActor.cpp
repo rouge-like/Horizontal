@@ -85,6 +85,18 @@ void AVFXActor::StopVFX()
 	{
 		ParticleSystemComponent->DeactivateSystem();
 	}
+
+	// VFX 종료 시 MPC의 Extinguished를 1로 설정하여 emissive 숨김 (bUpdateMPC가 true일 때만)
+	if (bUpdateMPC && MPC_Fire)
+	{
+		if (UWorld* W = GetWorld())
+		{
+			if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
+			{
+				Inst->SetScalarParameterValue(TEXT("Extinguished"), 1.f);  // 불이 꺼진 상태
+			}
+		}
+	}
 }
 
 void AVFXActor::StartBurnAt(const FVector& WorldLocation, float StartRadius, float MaxRadius)
@@ -128,21 +140,28 @@ void AVFXActor::PushToNiagara() const
 
 void AVFXActor::PushToMPC() const
 {
-	if (!MPC_Fire) return;
+	// bUpdateMPC가 false면 MPC 업데이트 건너뛰기 (여러 VFX가 동시에 MPC를 덮어쓰는 것 방지)
+	if (!bUpdateMPC || !MPC_Fire) return;
 
-	if (UWorld* W = GetWorld())
+	UWorld* W = GetWorld();
+	if (!W) return;
+
+	if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
 	{
-		if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
+		// 중심 고정(최초 1회)
+		if (bLockCenter && !bCenterInit)
 		{
-			// MPC 기본값을 강제로 덮어쓰기
-			Inst->SetVectorParameterValue(TEXT("BurnCenter"), BurnCenter);
-			Inst->SetScalarParameterValue(TEXT("BurnRadius"), BurnRadius);
-			Inst->SetScalarParameterValue(TEXT("EdgeWidth"),  EdgeWidth);
-			Inst->SetScalarParameterValue(TEXT("BurnIntensity_G"), BurnIntensity_G);
-			
-			UE_LOG(LogTemp, Warning, TEXT("VFXActor: MPC Updated - BurnCenter=%s, BurnRadius=%f, BurnIntensity_G=%f"), 
-				*BurnCenter.ToString(), BurnRadius, BurnIntensity_G);
+			LockedCenter = BurnCenter;
+			bCenterInit  = true;
 		}
+
+		const FVector CenterToPush = (bLockCenter && bCenterInit) ? LockedCenter : BurnCenter;
+
+		Inst->SetVectorParameterValue(TEXT("BurnCenter"),      CenterToPush);
+		Inst->SetScalarParameterValue(TEXT("BurnRadius"),      BurnRadius);
+		Inst->SetScalarParameterValue(TEXT("EdgeWidth"),       EdgeWidth);
+		Inst->SetScalarParameterValue(TEXT("BurnIntensity_G"), BurnIntensity_G);
+		Inst->SetScalarParameterValue(TEXT("Extinguished"),    0.f);  // 불이 붙은 상태
 	}
 }
 

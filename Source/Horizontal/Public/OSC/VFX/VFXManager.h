@@ -34,6 +34,7 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 	TMap<FName, FVFXActorPool> VFXPools;
+	
 
 	UPROPERTY(EditAnywhere)
 	int32 InitialPoolSize = 50;
@@ -46,4 +47,26 @@ public:
 	AVFXActor* SpawnVFX(FName Name, const FVector& Location, const FRotator& Rotation, const FVector& Scale);
 
 	void DespawnVFX(AVFXActor* VFX);
+
+
+public:
+	// === 누적 확산 상태 ===
+	UPROPERTY(VisibleAnywhere, Category="Fire|Global")
+	TMap<FName, float> AccumRadius;
+
+	UPROPERTY(VisibleAnywhere, Category="Fire|Global")
+	TMap<FName, float> AccumEdge;
+
+	// === 확산 속도 제어 ===
+	UPROPERTY(EditAnywhere, Category="Fire|Anim")
+	float ShellGrowInterval = 10.f;  
+	UPROPERTY(EditAnywhere, Category="Fire|Anim")
+	float RadiusGrowStep = 200.f;
+	UPROPERTY(EditAnywhere, Category="Fire|Anim")
+	float EdgeGrowStep = 40.f;
+	UPROPERTY(EditAnywhere, Category="Fire|Anim")
+	float MaxRadius = 2000.f;
+	UPROPERTY(EditAnywhere, Category="Fire|Anim")
+	float MaxEdgeWidth = 300.f;
+
 };

@@ -69,6 +69,17 @@ public:
 	void StartVFX();
 	void StopVFX();
 
+	float GetBurnIntensityG() const { return BurnIntensity_G; }
+	FVector GetBurnCenter() const { return BurnCenter; }
+
+	UPROPERTY(EditAnywhere, Category="Fire|Params") bool bLockCenter = true;
+	mutable bool bCenterInit = false;
+	mutable FVector LockedCenter = FVector::ZeroVector;
+
+	// MPC 업데이트 비활성화 (여러 VFX가 동시에 MPC를 덮어쓰는 문제 방지)
+	UPROPERTY(EditAnywhere, Category="Fire|Params") 
+	bool bUpdateMPC = false;
+
 	//번짐제어하는 api(외부호출)
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void StartBurnAt(const FVector& WorldLocation, float StartRadius =0.0f, float MaxRadius = 600.f);

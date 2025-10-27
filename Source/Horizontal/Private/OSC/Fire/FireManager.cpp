@@ -949,36 +949,64 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
         UPrimitiveComponent* PrimComp = Cell.AttachedComponent.Get();
         if (UMeshComponent* MC = Cast<UMeshComponent>(PrimComp))
         {
-            const int32 NumSlots = MC->GetNumMaterials();
+            // 제외할 액터 태그 확인
+            AActor* OwnerActor = MC->GetOwner();
+            bool bShouldExclude = false;
+            
+            if (OwnerActor)
+            {
+                for (const FName& ExcludedTag : ExcludedActorTags)
+                {
+                    if (OwnerActor->ActorHasTag(ExcludedTag))
+                    {
+                        bShouldExclude = true;
+                        UE_LOG(LogTemp, Log, TEXT("FireManager: 머티리얼 변경 제외 - Actor=%s, Tag=%s"), 
+                            *OwnerActor->GetName(), *ExcludedTag.ToString());
+                        break;
+                    }
+                }
+            }
+            
+            if (!bShouldExclude)
+            {
+                const int32 NumSlots = MC->GetNumMaterials();
 
-            auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI)
+            auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI, int32 SlotIndex)
             {
                 // 불이 붙었을 때 파라미터 설정
                 DMI->SetVectorParameterValue(TEXT("BurnCenter"),      SpawnLocation);  
                 DMI->SetScalarParameterValue(TEXT("BurnRadius"),      OnFireBurnRadius); 
                 DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       OnFireEdgeWidth);
+                DMI->SetScalarParameterValue(TEXT("EdgeFalloffPower"), EdgeFalloffPower);
                 DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
                 DMI->SetScalarParameterValue(TEXT("Extinguished"),    0.f);
+                DMI->SetScalarParameterValue(TEXT("AshAmount"),       0.f);  // 불이 붙었을 때는 재 효과 없음
                 
-                UE_LOG(LogTemp, Warning, TEXT("FireManager: 불 활성화 - BurnCenter=%s, BurnRadius=%f, BurnIntensity_G=%f"), 
-                    *SpawnLocation.ToString(), OnFireBurnRadius, OnFireBurnIntensity_G);
+                UE_LOG(LogTemp, Log, TEXT("FireManager: 불 활성화 - CellIndex=%d, Slot=%d, Mesh=%s, BurnCenter=%s"), 
+                    CellIndex, SlotIndex, *MC->GetName(), *SpawnLocation.ToString());
             };
 
             for (int32 Slot = 0; Slot < NumSlots; ++Slot)
             {
                 const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
 
-                // 1) 슬롯 캐시에 이미 MID가 있고 유효하면 "재사용"
+                // 1) 슬롯 캐시에 이미 MID가 있고 유효하면 건너뛰기 (첫 번째 셀이 이미 제어 중)
                 if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
                 {
                     if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
                     {
-                        InitBurnParams(Existing);     
-                        continue;                     // 새 MID 생성 금지
+                        // 참조 카운트 증가
+                        int32& RefCount = BurnMIRefCount.FindOrAdd(Key, 0);
+                        RefCount++;
+                        
+                        UE_LOG(LogTemp, Log, TEXT("FireManager: 스킵 - CellIndex=%d, Slot=%d, Mesh=%s (이미 다른 셀이 제어 중, RefCount=%d)"), 
+                            CellIndex, Slot, *MC->GetName(), RefCount);
+                        continue;
                     }
                     else
                     {
-                        BurnMICacheBySlot.Remove(Key); 
+                        BurnMICacheBySlot.Remove(Key);
+                        BurnMIRefCount.Remove(Key);
                     }
                 }
 
@@ -986,20 +1014,34 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
                 UMaterialInterface* CurMat = MC->GetMaterial(Slot);
                 UMaterialInstanceDynamic* DMI = Cast<UMaterialInstanceDynamic>(CurMat);
 
-               
+                // DMI가 없거나 BurnMaterial이 아니면 새로 생성
                 if (!DMI || DMI->Parent != BurnMaterial)
                 {
                     DMI = MC->CreateDynamicMaterialInstance(Slot, BurnMaterial);
                     if (!DMI) { continue; }
+                    
+                    UE_LOG(LogTemp, Log, TEXT("FireManager: 새 DMI 생성 - CellIndex=%d, Slot=%d, Mesh=%s"), 
+                        CellIndex, Slot, *MC->GetName());
+                }
+                else
+                {
+                    // 기존 DMI 재사용 (재점화 시 파라미터는 InitBurnParams에서 초기화됨)
+                    UE_LOG(LogTemp, Log, TEXT("FireManager: 기존 DMI 재사용 - CellIndex=%d, Slot=%d, Mesh=%s"), 
+                        CellIndex, Slot, *MC->GetName());
                 }
 
-                InitBurnParams(DMI);
+                // 캐시에 없었다면 재점화 시나리오이므로 파라미터를 항상 초기화
+                InitBurnParams(DMI, Slot);
 
                 // 3) 슬롯 단위 캐시에 저장
                 BurnMICacheBySlot.Add(Key, DMI);
+                
+                // 4) 참조 카운트 초기화
+                BurnMIRefCount.Add(Key, 1);
 
             
             }
+            } // if (!bShouldExclude)
         }
     }
 
@@ -1212,15 +1254,21 @@ void AFireManager::UpdateExtinguishAnimation(int32 CellIndex)
     {
         if (!MI) return;
 
-        // 0→1로 ‘소화’ 진행
+        // 0→1로 '소화' 진행
         const float ExtVal = Progress;
+        
         // 강도는 점차 0으로
         const float Intensity = FMath::Lerp(OnFireBurnIntensity_G, 0.0f, Progress);
+        
+        // 재 효과: 점진적으로 어두워짐 (0→AshDarkenAmount)
+        const float AshAmount = FMath::Lerp(0.0f, AshDarkenAmount, Progress);
 
         MI->SetScalarParameterValue(TEXT("Extinguished"),    ExtVal);
         MI->SetScalarParameterValue(TEXT("BurnIntensity_G"), Intensity);
+        MI->SetScalarParameterValue(TEXT("AshAmount"),       AshAmount);
 
-        
+        UE_LOG(LogTemp, Log, TEXT("FireManager: 소화 진행 중 - CellIndex=%d, Progress=%.2f, Extinguished=%.2f, Intensity=%.2f, AshAmount=%.2f"), 
+            CellIndex, Progress, ExtVal, Intensity, AshAmount);
     };
 
     if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
@@ -1244,6 +1292,28 @@ void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
 {
     if (!Cells.IsValidIndex(CellIndex)) return;
     
+    // 최종적으로 Extinguished = 1로 확실히 설정
+    FFireCell& Cell = Cells[CellIndex];
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Cell.AttachedComponent.Get()))
+    {
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+            {
+                if (UMaterialInstanceDynamic* DMI = FoundPtr->Get())
+                {
+                    DMI->SetScalarParameterValue(TEXT("Extinguished"), 1.f);
+                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 0.f);
+                    DMI->SetScalarParameterValue(TEXT("AshAmount"), AshDarkenAmount);
+                    UE_LOG(LogTemp, Warning, TEXT("FireManager: 최종 소화 설정 - CellIndex=%d, Slot=%d, Extinguished=1, AshAmount=%.2f"), 
+                        CellIndex, Slot, AshDarkenAmount);
+                }
+            }
+        }
+    }
+    
     // 타이머 정리
     if (FTimerHandle* TimerPtr = ExtinguishAnimationTimers.Find(CellIndex))
     {
@@ -1260,11 +1330,55 @@ void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
 void AFireManager::ClearBurnMIForCell(int32 CellIndex)
 {
     if (!Cells.IsValidIndex(CellIndex)) return;
-    if (UPrimitiveComponent* Prim = Cells[CellIndex].AttachedComponent.Get())
+    
+    UPrimitiveComponent* Prim = Cells[CellIndex].AttachedComponent.Get();
+    if (!Prim) return;
+    
+    // 캐시에서 제거
+    BurnMICache.Remove(Prim);
+    
+    // BurnMICacheBySlot에서 참조 카운트 감소 및 조건부 제거
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
     {
-        BurnMICache.Remove(Prim);
-      
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            
+            // 참조 카운트 감소
+            int32* RefCountPtr = BurnMIRefCount.Find(Key);
+            if (RefCountPtr)
+            {
+                (*RefCountPtr)--;
+                
+                UE_LOG(LogTemp, Log, TEXT("FireManager: 참조 카운트 감소 - CellIndex=%d, Slot=%d, Mesh=%s, RefCount=%d"), 
+                    CellIndex, Slot, *MC->GetName(), *RefCountPtr);
+                
+                // 참조 카운트가 0 이하가 되면 완전히 제거
+                if (*RefCountPtr <= 0)
+                {
+                    if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+                    {
+                        if (UMaterialInstanceDynamic* DMI = FoundPtr->Get())
+                        {
+                            // 모든 참조가 사라졌으므로 완전히 꺼진 상태(재)로 설정
+                            DMI->SetScalarParameterValue(TEXT("Extinguished"), 1.f);
+                            DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 0.f);
+                            DMI->SetScalarParameterValue(TEXT("AshAmount"), AshDarkenAmount);
+                            
+                            UE_LOG(LogTemp, Warning, TEXT("FireManager: 완전 소화 - Mesh=%s, Slot=%d, AshAmount=%.2f"), 
+                                *MC->GetName(), Slot, AshDarkenAmount);
+                        }
+                    }
+                    
+                    BurnMICacheBySlot.Remove(Key);
+                    BurnMIRefCount.Remove(Key);
+                }
+            }
+        }
     }
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: BurnMI 제거 완료 - CellIndex=%d"), CellIndex);
 }
 
 
