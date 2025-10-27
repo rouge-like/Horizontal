@@ -246,7 +246,7 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(FName Dia
 			}
 		}
 
-		PC->FlushPressedKeys();
+		//PC->FlushPressedKeys();
 		if (player)
 		{
 			player->GetCharacterMovement()->StopMovementImmediately();

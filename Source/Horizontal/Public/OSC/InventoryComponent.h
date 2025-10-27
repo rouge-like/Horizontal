@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "InventoryComponent.generated.h"
 
+class APlayerBaseController;
 class AUsableItemBase;
 class FLifetimeProperty;
 class APlayerBase;
@@ -25,6 +26,8 @@ protected:
 
     UPROPERTY(VisibleAnywhere)
     APlayerBase* OwningPlayer;
+    UPROPERTY(VisibleAnywhere)
+    APlayerBaseController* OwningPlayerController;
     
     UPROPERTY(EditDefaultsOnly, Category="Input")
     TObjectPtr<UInputAction> UseItemAction;
