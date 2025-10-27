@@ -24,7 +24,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void OnChoiceButtonClicked(FName JumpToLabel);
 
-	void ShowImage(uint32 imgNum);
+	void ShowImage(uint32 imgNum, float Width = 0.0f, float Height = 0.0f);
 	void HideImage();
 
 	UFUNCTION()
@@ -55,6 +55,9 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	class UImage* ExampleImg;
+
+	// UPROPERTY(meta = (BindWidget))
+	// class USizeBox* ImageSizeBox;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Assets", meta = (AllowedClasses = "Texture2D, MediaSource"))

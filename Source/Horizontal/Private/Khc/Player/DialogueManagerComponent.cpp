@@ -282,19 +282,19 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(FName Dia
 
 		if (DialogueLabel == "NPC03_7")
 		{
-			DialogueWidgetInstance->ShowImage(0);
+			DialogueWidgetInstance->ShowImage(0, 1000, 600);
 		}
 		else if (DialogueLabel == "Door01_2")
 		{
-			DialogueWidgetInstance->ShowImage(1);
+			DialogueWidgetInstance->ShowImage(1, 1000, 600);
 		}
 		else if (DialogueLabel == "MainDoor1_2")
 		{
-			DialogueWidgetInstance->ShowImage(2);
+			DialogueWidgetInstance->ShowImage(2, 600, 700);
 		}
 		else if (DialogueLabel == "FireExt_6")
 		{
-			DialogueWidgetInstance->ShowImage(3);
+			DialogueWidgetInstance->ShowImage(3, 600, 700);
 		}
 
 	}
