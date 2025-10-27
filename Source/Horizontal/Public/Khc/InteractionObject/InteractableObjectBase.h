@@ -60,10 +60,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<class UObjectInteractionComponent> InteractionComponent;
 
-
 	float originRotYaw = 0.f;
 
 	UPROPERTY(EditAnywhere)
-	AStaticMeshActor* MainDoor;
+	class AStaticMeshActor* MainDoor;
 
 };
