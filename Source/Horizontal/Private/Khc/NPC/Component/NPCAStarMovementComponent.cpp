@@ -93,7 +93,7 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
     if (bIsMoving)
     {
         const float StuckVelocityThreshold = 10.0f; 
-        const float StuckDistanceToGoal = 500.0f; 
+        const float StuckDistanceToGoal = 250.0f; 
 
         float CurrentSpeed = OwnerPawn->GetVelocity().Size2D();
         float DistanceToGoal = FVector::Dist2D(OwnerPawn->GetActorLocation(), Destination);

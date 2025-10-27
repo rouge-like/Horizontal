@@ -73,7 +73,7 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 		FDialogueRow* Row = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
 		if (Row)
 		{
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 	}
 }
@@ -170,11 +170,11 @@ void UDialogueManagerComponent::Server_ProcessChoice_Implementation(FName JumpTo
 	{
 		if (Row->DialogueType == EDialogueDataType::End || Row->DialogueType == EDialogueDataType::EndGood || Row->DialogueType == EDialogueDataType::EndBad)
 		{
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 		else // Normal 또는 Choice 타입이면
 		{
-			Client_UpdateDialogueUI(*Row);
+			Client_UpdateDialogueUI(CurrentDialogueLabel, *Row);
 		}
 	}
 	else
@@ -219,7 +219,7 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 	FDialogueRow* NextRow = DialogueTable->FindRow<FDialogueRow>(CurrentDialogueLabel, "");
 	if (NextRow)
 	{
-		Client_UpdateDialogueUI(*NextRow);
+		Client_UpdateDialogueUI(CurrentDialogueLabel, *NextRow);
 	}
 	else
 	{
@@ -227,7 +227,7 @@ void UDialogueManagerComponent::Server_AdvanceDialogue_Implementation()
 	}
 }
 
-void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDialogueRow& DialogueData)
+void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(FName DialogueLabel, const FDialogueRow& DialogueData)
 {
 	if (!DialogueWidgetClass) return;
 
@@ -280,19 +280,19 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(const FDi
 			break;
 		}
 
-		if (CurrentDialogueLabel == "NPC03_7")
+		if (DialogueLabel == "NPC03_7")
 		{
 			DialogueWidgetInstance->ShowImage(0);
 		}
-		else if (CurrentDialogueLabel == "Door01_2")
+		else if (DialogueLabel == "Door01_2")
 		{
 			DialogueWidgetInstance->ShowImage(1);
 		}
-		else if (CurrentDialogueLabel == "MainDoor1_2")
+		else if (DialogueLabel == "MainDoor1_2")
 		{
 			DialogueWidgetInstance->ShowImage(2);
 		}
-		else if (CurrentDialogueLabel == "FireExt_6")
+		else if (DialogueLabel == "FireExt_6")
 		{
 			DialogueWidgetInstance->ShowImage(3);
 		}
