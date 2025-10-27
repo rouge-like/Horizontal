@@ -199,10 +199,6 @@ void UInventoryComponent::RemoveItemInternal(int32 ItemIndex, bool bCallOnDrop)
 
 void UInventoryComponent::StartUseItem()
 {
-    if (IsValid(OwningPlayerController))
-    {
-        if (OwningPlayerController->bShowMouseCursor) return;
-    }
     if (AUsableItemBase* Item = SelectedItem.Get())
     {
         Item->StartUse();
@@ -211,12 +207,6 @@ void UInventoryComponent::StartUseItem()
 
 void UInventoryComponent::StopUseItem()
 {
-    if (IsValid(OwningPlayerController))
-    {
-        if (OwningPlayerController->bShowMouseCursor) return;
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("%s"), *OwningPlayerController->GetCurrentInputModeDebugString());
     if (AUsableItemBase* Item = SelectedItem.Get())
     {
         Item->StopUse();
