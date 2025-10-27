@@ -17,6 +17,7 @@ void ALobbyPlayerController::BeginPlay()
 
 	MakeUI();
 	bShowMouseCursor = true;
+	OwnerPreview = Cast<ALobbyPreviewPawn>(GetPawn());
 	
 	if (HasAuthority())
 	{
@@ -32,7 +33,6 @@ void ALobbyPlayerController::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ALobbyPlayerController, bIsReady);
 }
 
 void ALobbyPlayerController::MakeUI()
@@ -42,11 +42,6 @@ void ALobbyPlayerController::MakeUI()
 		MainUI = CreateWidget<ULobbyMainUI>(GetWorld(), MainUIClass);
 		MainUI->AddToViewport();
 	}
-}
-
-void ALobbyPlayerController::OnRep_IsReady()
-{
-	Cast<ALobbyPreviewPawn>(GetPawn())->bIsReady = bIsReady;
 }
 
 void ALobbyPlayerController::ServerOnJoinComplete_Implementation()
@@ -63,9 +58,7 @@ void ALobbyPlayerController::ClientSetPlayerCount_Implementation(int32 Count)
 
 void ALobbyPlayerController::ServerPlayerReady_Implementation(bool bSetReady)
 {
-	bIsReady = bSetReady;
-
-	OnRep_IsReady();
+	Cast<ALobbyPreviewPawn>(GetPawn())->bIsReady = bSetReady;
 }
 
 void ALobbyPlayerController::SetPlayerCount(int32 Count)

@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "LobbyPlayerController.generated.h"
 
+class ALobbyPreviewPawn;
 /**
  * 
  */
@@ -25,17 +26,14 @@ protected:
 	ULobbyMainUI* MainUI;
 	
 	int32 PlayerCount;
-	
+
+	UPROPERTY()
+	ALobbyPreviewPawn* OwnerPreview;
 	void MakeUI();
 
 	UFUNCTION(Server, Reliable)
 	void ServerOnJoinComplete();
 
-	UPROPERTY(ReplicatedUsing = OnRep_IsReady)
-	bool bIsReady = false;
-
-	UFUNCTION()
-	void OnRep_IsReady();
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetPlayerCount(int32 Count);

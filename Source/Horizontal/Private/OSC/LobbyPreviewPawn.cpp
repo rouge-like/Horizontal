@@ -3,6 +3,7 @@
 
 #include "LobbyPreviewPawn.h"
 
+#include "Net/UnrealNetwork.h"
 #include "OSC/LobbyPlayerController.h"
 #include "OSC/Game/LobbyGameMode.h"
 
@@ -22,6 +23,13 @@ void ALobbyPreviewPawn::BeginPlay()
 	
 }
 
+void ALobbyPreviewPawn::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ALobbyPreviewPawn, bIsReady);
+}
+
 // Called every frame
 void ALobbyPreviewPawn::Tick(float DeltaTime)
 {
@@ -32,5 +40,10 @@ void ALobbyPreviewPawn::Tick(float DeltaTime)
 void ALobbyPreviewPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+void ALobbyPreviewPawn::OnRep_IsReady()
+{
+	
 }
 

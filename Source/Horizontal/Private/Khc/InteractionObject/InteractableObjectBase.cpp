@@ -3,7 +3,6 @@
 
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
-#include "CborTypes.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Khc/InteractionObject/ObjectInteractionComponent.h"
