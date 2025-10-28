@@ -206,6 +206,13 @@ private:
 
     void DeactivateFireVFX(int32 CellIndex);
 
+    // 멀티플레이어 동기화를 위한 RPC 함수들
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_UpdateBurnMaterial(UPrimitiveComponent* TargetComponent, const FVector& SpawnLocation, int32 CellIndex);
+    
+    UFUNCTION(NetMulticast, Reliable)
+    void Multicast_StartExtinguishAnimation(UPrimitiveComponent* TargetComponent, int32 CellIndex);
+
     int32 FindCellIndexRecursive(int32 CellIndex, const FVector& WorldLocation) const;
 
     void ApplySuppressionInSphereRecursive(APlayerBaseState* PlayerState, int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
