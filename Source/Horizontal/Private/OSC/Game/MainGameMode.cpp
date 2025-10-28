@@ -9,6 +9,10 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "OnlineSubsystem.h"
+#include "Interfaces/VoiceInterface.h"
+#include "GameFramework/PlayerState.h"
+
 AMainGameMode::AMainGameMode()
 {
 }
@@ -62,6 +66,26 @@ void AMainGameMode::StartPlay()
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+
+	if (NewPlayer && NewPlayer->PlayerState)
+	{
+		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+		if (Subsystem)
+		{
+			IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+			if (VoiceInterface.IsValid())
+			{
+				FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();
+                
+				if (UniqueNetId.IsValid())
+				{
+					VoiceInterface->RegisterRemoteTalker(*UniqueNetId);
+					UE_LOG(LogTemp, Log, TEXT("Player '%s' has been registered as a remote talker."), *NewPlayer->GetName());
+				}
+			}
+		}
+	}
+	
 	for (AInteractableObjectBase* Interactable : AllInteractableObjectsInLevel)
 	{
 		if (Interactable)

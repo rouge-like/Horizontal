@@ -13,6 +13,9 @@
 #include "OSC/UI/EvaluationItem.h"
 #include "OSC/UI/ResultUI.h"
 
+#include "OnlineSubsystem.h"
+#include "Interfaces/VoiceInterface.h"
+
 class UEnhancedInputLocalPlayerSubsystem;
 
 APlayerBaseController::APlayerBaseController()
@@ -25,6 +28,20 @@ APlayerBaseController::APlayerBaseController()
 void APlayerBaseController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (IsLocalPlayerController())
+	{
+		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+		if (Subsystem)
+		{
+			IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+			if (VoiceInterface.IsValid())
+			{
+				VoiceInterface->StartNetworkedVoice(0);
+				UE_LOG(LogTemp, Log, TEXT("Local voice capture started."));
+			}
+		}
+	}
 }
 
 void APlayerBaseController::OnPossess(APawn* aPawn)

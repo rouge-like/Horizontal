@@ -999,8 +999,8 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
                         int32& RefCount = BurnMIRefCount.FindOrAdd(Key, 0);
                         RefCount++;
                         
-                        UE_LOG(LogTemp, Log, TEXT("FireManager: 스킵 - CellIndex=%d, Slot=%d, Mesh=%s (이미 다른 셀이 제어 중, RefCount=%d)"), 
-                            CellIndex, Slot, *MC->GetName(), RefCount);
+                        // UE_LOG(LogTemp, Log, TEXT("FireManager: 스킵 - CellIndex=%d, Slot=%d, Mesh=%s (이미 다른 셀이 제어 중, RefCount=%d)"), 
+                        //     CellIndex, Slot, *MC->GetName(), RefCount);
                         continue;
                     }
                     else
@@ -1232,7 +1232,7 @@ void AFireManager::StartExtinguishAnimation(int32 CellIndex)
     
     ExtinguishAnimationTimers.Add(CellIndex, TimerHandle);
     
-    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 시작 - CellIndex=%d"), CellIndex);
+    //UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 시작 - CellIndex=%d"), CellIndex);
 }
 
 void AFireManager::UpdateExtinguishAnimation(int32 CellIndex)
@@ -1267,8 +1267,8 @@ void AFireManager::UpdateExtinguishAnimation(int32 CellIndex)
         MI->SetScalarParameterValue(TEXT("BurnIntensity_G"), Intensity);
         MI->SetScalarParameterValue(TEXT("AshAmount"),       AshAmount);
 
-        UE_LOG(LogTemp, Log, TEXT("FireManager: 소화 진행 중 - CellIndex=%d, Progress=%.2f, Extinguished=%.2f, Intensity=%.2f, AshAmount=%.2f"), 
-            CellIndex, Progress, ExtVal, Intensity, AshAmount);
+        //UE_LOG(LogTemp, Log, TEXT("FireManager: 소화 진행 중 - CellIndex=%d, Progress=%.2f, Extinguished=%.2f, Intensity=%.2f, AshAmount=%.2f"), 
+        //    CellIndex, Progress, ExtVal, Intensity, AshAmount);
     };
 
     if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
@@ -1307,8 +1307,8 @@ void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
                     DMI->SetScalarParameterValue(TEXT("Extinguished"), 1.f);
                     DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 0.f);
                     DMI->SetScalarParameterValue(TEXT("AshAmount"), AshDarkenAmount);
-                    UE_LOG(LogTemp, Warning, TEXT("FireManager: 최종 소화 설정 - CellIndex=%d, Slot=%d, Extinguished=1, AshAmount=%.2f"), 
-                        CellIndex, Slot, AshDarkenAmount);
+                    //UE_LOG(LogTemp, Warning, TEXT("FireManager: 최종 소화 설정 - CellIndex=%d, Slot=%d, Extinguished=1, AshAmount=%.2f"), 
+                    //    CellIndex, Slot, AshDarkenAmount);
                 }
             }
         }
@@ -1324,7 +1324,7 @@ void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
     // 진행률 정리
     ExtinguishAnimationProgress.Remove(CellIndex);
     
-    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 완료 - CellIndex=%d"), CellIndex);
+    //UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 완료 - CellIndex=%d"), CellIndex);
 }
 
 void AFireManager::ClearBurnMIForCell(int32 CellIndex)
@@ -1351,8 +1351,8 @@ void AFireManager::ClearBurnMIForCell(int32 CellIndex)
             {
                 (*RefCountPtr)--;
                 
-                UE_LOG(LogTemp, Log, TEXT("FireManager: 참조 카운트 감소 - CellIndex=%d, Slot=%d, Mesh=%s, RefCount=%d"), 
-                    CellIndex, Slot, *MC->GetName(), *RefCountPtr);
+                //UE_LOG(LogTemp, Log, TEXT("FireManager: 참조 카운트 감소 - CellIndex=%d, Slot=%d, Mesh=%s, RefCount=%d"), 
+                //    CellIndex, Slot, *MC->GetName(), *RefCountPtr);
                 
                 // 참조 카운트가 0 이하가 되면 완전히 제거
                 if (*RefCountPtr <= 0)

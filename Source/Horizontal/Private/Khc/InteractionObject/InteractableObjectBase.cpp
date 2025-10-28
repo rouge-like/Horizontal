@@ -136,6 +136,7 @@ void AInteractableObjectBase::OnRep_MainDoorMove()
 void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 	if (bIsMove)
 	{
 		const float TargetYaw = originRotYaw + (-140.0f);
