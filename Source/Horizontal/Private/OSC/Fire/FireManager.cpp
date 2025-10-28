@@ -382,6 +382,7 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 C
 
     FFireCell& LeafCell = Cells[CellIndex];
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 //     if (LeafCell.CellExtent.IsNearlyZero())
 //     {
@@ -398,6 +399,9 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 C
     DrawDebugBox(GetWorld(), Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent, FQuat::Identity, DebugColor, false, 1.0f, 0, 1.0f);
 #endif
 
+=======
+    
+>>>>>>> Stashed changes
 =======
     
 >>>>>>> Stashed changes
