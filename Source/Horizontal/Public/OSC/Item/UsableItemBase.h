@@ -82,6 +82,7 @@ protected:
     UFUNCTION(Server, Reliable)
     void ServerStopUse();
 
+    bool bInteracted = false;
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Interact")
     UInteractableComponentBase* InteractableComponent;
 };

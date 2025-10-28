@@ -60,11 +60,7 @@ protected:
 
 	// 스프린트 토글에 바인딩할 입력 액션
 	UPROPERTY(EditDefaultsOnly, Category="Input")
-	TObjectPtr<UInputAction> SprintAction;
-	
-	// 스프린트 토글에 바인딩할 입력 액션
-	UPROPERTY(EditDefaultsOnly, Category="Input")
-	TObjectPtr<UInputAction> PickupAction;
+	TObjectPtr<UInputAction> SprintAction;;
 
 	// 스프린트 토글에 바인딩할 입력 액션 
 	UPROPERTY(EditDefaultsOnly, Category="Input")
@@ -81,10 +77,6 @@ protected:
 	// 스프린트 상태 이동 속도
 	UPROPERTY(EditDefaultsOnly, Category="Movement|Speed", meta=(ClampMin="0.0"))
 	float SprintSpeed = 600.0f;
-
-	// 아이템 획득 범위
-	UPROPERTY(EditDefaultsOnly, Category="Pickup", meta=(ClampMin="0.0"))
-	float PickupRadius = 600.0f;
 	
 	// 로컬 입력으로 결정된 스프린트 의도
 	bool bWantsToSprint = false;
@@ -101,8 +93,6 @@ protected:
 
 	// 스프린트 상태를 내부적으로 설정
 	void SetSprintingInternal(bool bNewSprinting);
-	// 픽업 상태를 내부적으로 설정
-	void SetPickupInternal(AUsableItemBase* Item);
 	// 드랍 상태를 내부적으로 설정
 	void SetDropInternal();
 	
@@ -114,17 +104,13 @@ protected:
 	void HandleSprintPressed();
 	void HandleSprintReleased();
 	
-	// 픽업 입력 처리
-	void HandlePickupStarted();
 	// 드랍 입력 처리
 	void HandleDropStarted();
 	
 	// 서버에서 스프린트 상태를 갱신
 	UFUNCTION(Server, Reliable)
 	void ServerSetSprinting(bool bNewSprinting);
-	// 서버에서 픽업 상태를 갱신
-	UFUNCTION(Server, Reliable)
-	void ServerSetPickup(AUsableItemBase* Item);
+
 	// 서버에서 드랍 상태를 갱신
 	UFUNCTION(Server, Reliable)
 	void ServerSetDrop();
@@ -135,4 +121,14 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	class UPlayerInteractionComponent* InteractionComponent;
+	
+	UPROPERTY(VisibleAnywhere)
+	TSet<TSubclassOf<AUsableItemBase>> InteractedItemClasses;
+	
+public:
+	UFUNCTION()
+	void RegisterInteractedItem(AUsableItemBase* Item);
+
+	UFUNCTION()
+	bool HasInteractedWith(AUsableItemBase* Item) const;
 };

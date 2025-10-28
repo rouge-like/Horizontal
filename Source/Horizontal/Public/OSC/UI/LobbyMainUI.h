@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "LobbyMainUI.generated.h"
 
+class ALobbyPlayerController;
 /**
  * 
  */
@@ -19,9 +20,17 @@ class HORIZONTAL_API ULobbyMainUI : public UUserWidget
 	virtual void NativeConstruct() override;
 
 protected:
-	UPROPERTY(meta=(BindWidget))
-	UButton* StartGameButton;
+	UPROPERTY()
+	ALobbyPlayerController* PlayerController;
 
+	bool bIsReady = false;
+	
+	UPROPERTY(meta=(BindWidget)) 
+	UButton* StartGameButton;
+	
+	UPROPERTY(meta=(BindWidget))
+	UButton* ReadyButton;
+	
 	UPROPERTY(meta=(BindWidget))
 	UTextBlock* DisplayName;
 	
@@ -31,6 +40,9 @@ protected:
 	UFUNCTION()
 	void OnStartButtonClick();
 
+	UFUNCTION()
+	void OnReadyButtonClick();
 public:
 	void SetPlayerCount(int32 Count);
+	void SetStartButtonEnable(bool Visibility);
 };

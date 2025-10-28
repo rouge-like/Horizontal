@@ -44,6 +44,15 @@ void ALobbyPlayerController::MakeUI()
 	}
 }
 
+void ALobbyPlayerController::ClientMakeLoadingUI_Implementation()
+{
+	if (LoadingUIClass)
+	{
+		UUserWidget* LoadingUI = CreateWidget<UUserWidget>(GetWorld(), LoadingUIClass);
+		LoadingUI->AddToViewport();
+	}
+}
+
 void ALobbyPlayerController::ServerOnJoinComplete_Implementation()
 {
 	ALobbyGameMode* LGM = Cast<ALobbyGameMode>(GetWorld()->GetAuthGameMode());
@@ -59,10 +68,22 @@ void ALobbyPlayerController::ClientSetPlayerCount_Implementation(int32 Count)
 void ALobbyPlayerController::ServerPlayerReady_Implementation(bool bSetReady)
 {
 	Cast<ALobbyPreviewPawn>(GetPawn())->bIsReady = bSetReady;
+	bIsReady = bSetReady;
+	AGameModeBase* GM = GetWorld()->GetAuthGameMode();
+	if (IsValid(GM))
+	{
+		ALobbyGameMode* LGM = Cast<ALobbyGameMode>(GM);
+		LGM->CheckPlayerReady();
+	}
 }
 
 void ALobbyPlayerController::SetPlayerCount(int32 Count)
 {
 	PlayerCount = Count;
 	MainUI->SetPlayerCount(PlayerCount);
+}
+
+void ALobbyPlayerController::SetStartButtonEnable(bool bSetVisible)
+{
+	MainUI->SetStartButtonEnable(bSetVisible);
 }

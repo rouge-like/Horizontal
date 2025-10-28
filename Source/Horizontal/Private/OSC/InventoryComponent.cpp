@@ -57,7 +57,18 @@ void UInventoryComponent::OnRep_SelectedItem(AUsableItemBase* PreviousItem)
 {
     if (IsValid(PreviousItem))
     {
-        PreviousItem->OnUnequip();
+        int32 PreviousIdx = INDEX_NONE;
+        for (int32 Idx = 0; Idx < Inventory.Num(); ++Idx)
+        {
+            if (Inventory[Idx].Get() == PreviousItem)
+            {
+                RemoveItemInternal(Idx, true);
+            }
+        }
+        
+        RemoveItemInternal(PreviousIdx, true);
+        PreviousItem->OnDrop();
+        PreviousItem = nullptr;
     }
 
     if (IsValid(SelectedItem))
@@ -115,7 +126,7 @@ void UInventoryComponent::AddItem(AUsableItemBase* NewItem)
     const int32 NewIndex = Inventory.Add(NewItem);
 
     const bool bHasAuthority = (GetOwner() && GetOwner()->HasAuthority());
-    if (bHasAuthority && !IsValid(SelectedItem))
+    if (bHasAuthority)
     {
         ApplySelectionInternal(NewIndex);
     }

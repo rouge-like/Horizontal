@@ -2,6 +2,8 @@
 
 
 #include "OSC/Item/WetTowel.h"
+
+#include "Components/BoxComponent.h"
 #include "OSC/PlayerBase.h"
 
 
@@ -11,9 +13,18 @@ AWetTowel::AWetTowel()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	BoxComp = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxComp"));
+	SetRootComponent(BoxComp);
+	BoxComp->SetSimulatePhysics(true);
+	BoxComp->SetIsReplicated(true);
+	BoxComp->SetCollisionProfileName(TEXT("PhysicsActor"));
+	
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(FName("MeshComp"));
-	SetRootComponent(MeshComp);
+	MeshComp->SetupAttachment(BoxComp);
 	MeshComp->SetIsReplicated(true);
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetSimulatePhysics(false);
+	
 	AActor::SetReplicateMovement(true);
 }
 
@@ -30,13 +41,13 @@ void AWetTowel::HandlePickupAvailabilityChanged()
 
 	// 서버쪽에서만 물리 계산 실행
 	const bool bSimulatePhysics = HasAuthority() && bCanBePickedUp;
-	MeshComp->SetSimulatePhysics(bSimulatePhysics);
+	BoxComp->SetSimulatePhysics(bSimulatePhysics);
 
 	// 물리 수치 초기화
 	if (bSimulatePhysics)
 	{
-		MeshComp->SetPhysicsLinearVelocity(FVector::ZeroVector);
-		MeshComp->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+		BoxComp->SetPhysicsLinearVelocity(FVector::ZeroVector);
+		BoxComp->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	}
 }
 
