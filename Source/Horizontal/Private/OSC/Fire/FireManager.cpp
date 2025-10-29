@@ -14,6 +14,7 @@
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/GameStateBase.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 #include "OSC/PlayerBaseState.h"
 #include "OSC/VFX/VFXManager.h"
 #include "OSC/VFX/VFXActor.h"
@@ -30,6 +31,24 @@ void AFireManager::BeginPlay()
 {
     Super::BeginPlay();
     ActiveFireVFXActors.Reset();
+
+    // MPC 기본값 초기화 (문제의 원인 해결)
+    if (MPC_Fire)
+    {
+        if (UWorld* W = GetWorld())
+        {
+            if (UMaterialParameterCollectionInstance* Inst = W->GetParameterCollectionInstance(MPC_Fire))
+            {
+                Inst->SetVectorParameterValue(TEXT("BurnCenter"), FVector::ZeroVector);
+                Inst->SetScalarParameterValue(TEXT("BurnRadius"), OnFireBurnRadius);
+                Inst->SetScalarParameterValue(TEXT("EdgeWidth"), OnFireEdgeWidth);
+                Inst->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
+                
+                UE_LOG(LogTemp, Warning, TEXT("FireManager: MPC 초기화 완료 - BurnRadius=%f, BurnIntensity_G=%f"), 
+                    OnFireBurnRadius, OnFireBurnIntensity_G);
+            }
+        }
+    }
 
     if (HasAuthority())
     {
@@ -96,15 +115,7 @@ void AFireManager::Tick(float DeltaSeconds)
     {
         return;
     }
-    // for (int32 RootIndex : RootCellIndices)
-    // {
-    //     if (!Cells.IsValidIndex(RootIndex))
-    //     {
-    //         continue;
-    //     }
-    //
-    //     ProcessCellRecursive(RootIndex, DeltaSeconds);
-    // }
+   
     NextActiveCells.Empty();
     
     for (int32 CellIndex : ActiveCells)
@@ -384,15 +395,6 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 C
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 
-//     if (LeafCell.CellExtent.IsNearlyZero())
-//     {
-// #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-//         const FColor DebugColor = LeafCell.State == EFireCellState::Burning ? FColor::Red : (LeafCell.State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
-//         DrawDebugBox(GetWorld(), LeafCell.WorldCenter, LeafCell.CellExtent, FQuat::Identity, DebugColor, true, 2.0f, 0, 1.0f);
-// #endif
-//         Result.bAnyBurning = LeafCell.State == EFireCellState::Burning && LeafCell.Heat > 0.0f;
-//         return Result;
-//     }
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     const FColor DebugColor = Cells[CellIndex].State == EFireCellState::Burning ? FColor::Red : (Cells[CellIndex].State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
@@ -940,12 +942,135 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     }
 
     SpawnedActor->SetVFXName(VFXName);
+    //전역 파리미터 갱신
+    if (MPC_Fire)
+    {
+        SpawnedActor->SetMPCFire(MPC_Fire); 
+    }
+    
     ActiveFireVFXActors.Add(CellIndex, SpawnedActor);
     Cell.ActiveEffect = SpawnedActor;
+
+    //오브젝트 불 메테리얼 전환 시스템
+    if (BurnMaterial)
+    {
+        UPrimitiveComponent* PrimComp = Cell.AttachedComponent.Get();
+        if (UMeshComponent* MC = Cast<UMeshComponent>(PrimComp))
+        {
+            // 제외할 액터 태그 확인
+            AActor* OwnerActor = MC->GetOwner();
+            bool bShouldExclude = false;
+            
+            if (OwnerActor)
+            {
+                for (const FName& ExcludedTag : ExcludedActorTags)
+                {
+                    if (OwnerActor->ActorHasTag(ExcludedTag))
+                    {
+                        bShouldExclude = true;
+                        UE_LOG(LogTemp, Log, TEXT("FireManager: 머티리얼 변경 제외 - Actor=%s, Tag=%s"), 
+                            *OwnerActor->GetName(), *ExcludedTag.ToString());
+                        break;
+                    }
+                }
+            }
+            
+            if (!bShouldExclude)
+            {
+                const int32 NumSlots = MC->GetNumMaterials();
+
+            auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI, int32 SlotIndex)
+            {
+                // 불이 붙었을 때 파라미터 설정
+                DMI->SetVectorParameterValue(TEXT("BurnCenter"),      SpawnLocation);  
+                DMI->SetScalarParameterValue(TEXT("BurnRadius"),      OnFireBurnRadius); 
+                DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       OnFireEdgeWidth);
+                DMI->SetScalarParameterValue(TEXT("EdgeFalloffPower"), EdgeFalloffPower);
+                DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
+                DMI->SetScalarParameterValue(TEXT("Extinguished"),    0.f);
+                DMI->SetScalarParameterValue(TEXT("AshAmount"),       0.f);  // 불이 붙었을 때는 재 효과 없음
+                
+                UE_LOG(LogTemp, Log, TEXT("FireManager: 불 활성화 - CellIndex=%d, Slot=%d, Mesh=%s, BurnCenter=%s"), 
+                    CellIndex, SlotIndex, *MC->GetName(), *SpawnLocation.ToString());
+            };
+
+            for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+            {
+                const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+
+                // 1) 슬롯 캐시에 이미 MID가 있고 유효하면 건너뛰기 (첫 번째 셀이 이미 제어 중)
+                if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+                {
+                    if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
+                    {
+                        // 참조 카운트 증가
+                        int32& RefCount = BurnMIRefCount.FindOrAdd(Key, 0);
+                        RefCount++;
+                        
+                        UE_LOG(LogTemp, Log, TEXT("FireManager: 스킵 - CellIndex=%d, Slot=%d, Mesh=%s (이미 다른 셀이 제어 중, RefCount=%d)"), 
+                            CellIndex, Slot, *MC->GetName(), RefCount);
+                        continue;
+                    }
+                    else
+                    {
+                        BurnMICacheBySlot.Remove(Key);
+                        BurnMIRefCount.Remove(Key);
+                    }
+                }
+
+                
+                UMaterialInterface* CurMat = MC->GetMaterial(Slot);
+                UMaterialInstanceDynamic* DMI = Cast<UMaterialInstanceDynamic>(CurMat);
+
+                // DMI가 없거나 BurnMaterial이 아니면 새로 생성
+                if (!DMI || DMI->Parent != BurnMaterial)
+                {
+                    DMI = MC->CreateDynamicMaterialInstance(Slot, BurnMaterial);
+                    if (!DMI) { continue; }
+                    
+                    UE_LOG(LogTemp, Log, TEXT("FireManager: 새 DMI 생성 - CellIndex=%d, Slot=%d, Mesh=%s"), 
+                        CellIndex, Slot, *MC->GetName());
+                }
+                else
+                {
+                    // 기존 DMI 재사용 (재점화 시 파라미터는 InitBurnParams에서 초기화됨)
+                    UE_LOG(LogTemp, Log, TEXT("FireManager: 기존 DMI 재사용 - CellIndex=%d, Slot=%d, Mesh=%s"), 
+                        CellIndex, Slot, *MC->GetName());
+                }
+
+                // 캐시에 없었다면 재점화 시나리오이므로 파라미터를 항상 초기화
+                InitBurnParams(DMI, Slot);
+
+                // 3) 슬롯 단위 캐시에 저장
+                BurnMICacheBySlot.Add(Key, DMI);
+                
+                // 4) 참조 카운트 초기화
+                BurnMIRefCount.Add(Key, 1);
+
+            
+            }
+            } // if (!bShouldExclude)
+        }
+    }
+
+    // 번짐 시작 (AVFXActor가 MPC_Fire를 제어함)
+    const float MaxRadius = Cell.CellExtent.Size();
+    SpawnedActor->SetBurnParams(
+        SpawnLocation,   // Center
+        /*InRadius*/ OnFireBurnRadius,  // 기존 파라미터 사용
+        /*InEdgeWidth*/ OnFireEdgeWidth,
+        /*InIntensityG*/ OnFireBurnIntensity_G);
+
+    //확산시작
+    SpawnedActor->StartBurnAt(SpawnLocation, 0.f, MaxRadius);
+
 }
 
 void AFireManager::DeactivateFireVFX(int32 CellIndex)
 {
+    //프리즈 추가(메테리얼 고정)
+    FreezeBurnMaterialAtCell(CellIndex);
+    
     if (!HasAuthority())
     {
         return;
@@ -972,6 +1097,9 @@ void AFireManager::DeactivateFireVFX(int32 CellIndex)
     {
         Cells[CellIndex].ActiveEffect = nullptr;
     }
+
+    //메테리얼 전환
+    ClearBurnMIForCell(CellIndex);
 }
 
 void AFireManager::ApplySuppressionAtLocation(const FVector& WorldLocation, float SuppressionAmount)
@@ -1083,4 +1211,182 @@ bool AFireManager::ApplySuppressionToCell(int32 CellIndex, float SuppressionAmou
 
     return bModified;
 }
+
+void AFireManager::FreezeBurnMaterialAtCell(int32 CellIndex)
+{
+    // 점진적 소화 애니메이션 시작
+    StartExtinguishAnimation(CellIndex);
+}
+
+void AFireManager::StartExtinguishAnimation(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    
+    // 기존 타이머가 있다면 제거
+    if (FTimerHandle* ExistingTimer = ExtinguishAnimationTimers.Find(CellIndex))
+    {
+        GetWorldTimerManager().ClearTimer(*ExistingTimer);
+    }
+    
+    // 애니메이션 진행률 초기화
+    ExtinguishAnimationProgress.Add(CellIndex, 0.0f);
+    
+    
+    // 타이머 설정 (0.05초마다 업데이트)
+    FTimerHandle TimerHandle;
+    FTimerDelegate TimerDelegate;
+    TimerDelegate.BindUFunction(this, FName("UpdateExtinguishAnimation"), CellIndex);
+    GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 0.05f, true);
+    
+    ExtinguishAnimationTimers.Add(CellIndex, TimerHandle);
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 시작 - CellIndex=%d"), CellIndex);
+}
+
+void AFireManager::UpdateExtinguishAnimation(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+
+    float* ProgressPtr = ExtinguishAnimationProgress.Find(CellIndex);
+    if (!ProgressPtr) return;
+    float& Progress = *ProgressPtr;
+
+    Progress += 0.05f / ExtinguishAnimationDuration;  
+    if (Progress >= 1.0f) { Progress = 1.0f; CompleteExtinguishAnimation(CellIndex); return; }
+
+    FFireCell& Cell = Cells[CellIndex];
+    UPrimitiveComponent* Prim = Cell.AttachedComponent.Get();
+    if (!Prim) return;
+
+    auto UpdateMaterial = [&](UMaterialInstanceDynamic* MI)
+    {
+        if (!MI) return;
+
+        // 0→1로 '소화' 진행
+        const float ExtVal = Progress;
+        
+        // 강도는 점차 0으로
+        const float Intensity = FMath::Lerp(OnFireBurnIntensity_G, 0.0f, Progress);
+        
+        // 재 효과: 점진적으로 어두워짐 (0→AshDarkenAmount)
+        const float AshAmount = FMath::Lerp(0.0f, AshDarkenAmount, Progress);
+
+        MI->SetScalarParameterValue(TEXT("Extinguished"),    ExtVal);
+        MI->SetScalarParameterValue(TEXT("BurnIntensity_G"), Intensity);
+        MI->SetScalarParameterValue(TEXT("AshAmount"),       AshAmount);
+
+        UE_LOG(LogTemp, Log, TEXT("FireManager: 소화 진행 중 - CellIndex=%d, Progress=%.2f, Extinguished=%.2f, Intensity=%.2f, AshAmount=%.2f"), 
+            CellIndex, Progress, ExtVal, Intensity, AshAmount);
+    };
+
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
+    {
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+            {
+                if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
+                {
+                    UpdateMaterial(Existing);
+                }
+            }
+        }
+    }
+}
+
+void AFireManager::CompleteExtinguishAnimation(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    
+    // 최종적으로 Extinguished = 1로 확실히 설정
+    FFireCell& Cell = Cells[CellIndex];
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Cell.AttachedComponent.Get()))
+    {
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+            {
+                if (UMaterialInstanceDynamic* DMI = FoundPtr->Get())
+                {
+                    DMI->SetScalarParameterValue(TEXT("Extinguished"), 1.f);
+                    DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 0.f);
+                    DMI->SetScalarParameterValue(TEXT("AshAmount"), AshDarkenAmount);
+                    UE_LOG(LogTemp, Warning, TEXT("FireManager: 최종 소화 설정 - CellIndex=%d, Slot=%d, Extinguished=1, AshAmount=%.2f"), 
+                        CellIndex, Slot, AshDarkenAmount);
+                }
+            }
+        }
+    }
+    
+    // 타이머 정리
+    if (FTimerHandle* TimerPtr = ExtinguishAnimationTimers.Find(CellIndex))
+    {
+        GetWorldTimerManager().ClearTimer(*TimerPtr);
+        ExtinguishAnimationTimers.Remove(CellIndex);
+    }
+    
+    // 진행률 정리
+    ExtinguishAnimationProgress.Remove(CellIndex);
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: 점진적 소화 애니메이션 완료 - CellIndex=%d"), CellIndex);
+}
+
+void AFireManager::ClearBurnMIForCell(int32 CellIndex)
+{
+    if (!Cells.IsValidIndex(CellIndex)) return;
+    
+    UPrimitiveComponent* Prim = Cells[CellIndex].AttachedComponent.Get();
+    if (!Prim) return;
+    
+    // 캐시에서 제거
+    BurnMICache.Remove(Prim);
+    
+    // BurnMICacheBySlot에서 참조 카운트 감소 및 조건부 제거
+    if (UMeshComponent* MC = Cast<UMeshComponent>(Prim))
+    {
+        const int32 NumSlots = MC->GetNumMaterials();
+        for (int32 Slot = 0; Slot < NumSlots; ++Slot)
+        {
+            const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
+            
+            // 참조 카운트 감소
+            int32* RefCountPtr = BurnMIRefCount.Find(Key);
+            if (RefCountPtr)
+            {
+                (*RefCountPtr)--;
+                
+                UE_LOG(LogTemp, Log, TEXT("FireManager: 참조 카운트 감소 - CellIndex=%d, Slot=%d, Mesh=%s, RefCount=%d"), 
+                    CellIndex, Slot, *MC->GetName(), *RefCountPtr);
+                
+                // 참조 카운트가 0 이하가 되면 완전히 제거
+                if (*RefCountPtr <= 0)
+                {
+                    if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
+                    {
+                        if (UMaterialInstanceDynamic* DMI = FoundPtr->Get())
+                        {
+                            // 모든 참조가 사라졌으므로 완전히 꺼진 상태(재)로 설정
+                            DMI->SetScalarParameterValue(TEXT("Extinguished"), 1.f);
+                            DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), 0.f);
+                            DMI->SetScalarParameterValue(TEXT("AshAmount"), AshDarkenAmount);
+                            
+                            UE_LOG(LogTemp, Warning, TEXT("FireManager: 완전 소화 - Mesh=%s, Slot=%d, AshAmount=%.2f"), 
+                                *MC->GetName(), Slot, AshDarkenAmount);
+                        }
+                    }
+                    
+                    BurnMICacheBySlot.Remove(Key);
+                    BurnMIRefCount.Remove(Key);
+                }
+            }
+        }
+    }
+    
+    UE_LOG(LogTemp, Warning, TEXT("FireManager: BurnMI 제거 완료 - CellIndex=%d"), CellIndex);
+}
+
 

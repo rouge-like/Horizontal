@@ -3,7 +3,9 @@
 
 #include "Khc/UI/DialogueWidget.h"
 
+#include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -104,10 +106,20 @@ void UDialogueWidget::OnChoiceButtonClicked(FName JumpToLabel)
 	}
 }
 
-void UDialogueWidget::ShowImage(uint32 imgNum)
+void UDialogueWidget::ShowImage(uint32 imgNum, float Width, float Height)
 {
-	if (!ExampleImg) return;
+	// if (!ImageSizeBox || !ExampleImg)
+	// {
+	// 	HideImage();
+	// 	return;
+	// }
 
+	if (!ExampleImg)
+	{
+		HideImage();
+		return;
+	}
+	
 	UObject* AssetToShow = DisplayableAssets[imgNum];
 	
 	if (UTexture2D* Texture = Cast<UTexture2D>(AssetToShow))
@@ -137,7 +149,43 @@ void UDialogueWidget::ShowImage(uint32 imgNum)
 	{
 		HideImage();
 	}
-	
+
+	UCanvasPanelSlot* ImageSlot = Cast<UCanvasPanelSlot>(ExampleImg->Slot);
+
+	if (ImageSlot)
+	{
+		if (Width > 0.0f && Height > 0.0f)
+		{
+			// 3. 슬롯의 크기를 직접 설정합니다.
+			ImageSlot->SetSize(FVector2D(Width, Height));
+		}
+		else
+		{
+			ImageSlot->SetSize(FVector2D(0.f, 0.f)); // Size to Content
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UDialogueWidget::ShowImage - ExampleImg is NOT inside a CanvasPanel. Cannot set size directly."));
+	}
+	//
+	// if (Width > 0.0f)
+	// {
+	// 	ImageSizeBox->SetWidthOverride(Width);
+	// }
+	// else
+	// {
+	// 	ImageSizeBox->ClearWidthOverride();
+	// }
+	//
+	// if (Height > 0.0f)
+	// {
+	// 	ImageSizeBox->SetHeightOverride(Height);
+	// }
+	// else
+	// {
+	// 	ImageSizeBox->ClearHeightOverride();
+	// }
 	
 }
 

@@ -113,6 +113,27 @@ protected:
 public:
     void ApplySuppressionInSphere(APlayerBaseState* PlayerState, const FVector& Center, float Radius, float SuppressionAmount);
 
+    // 불이 붙었을 때 사용할 파라미터들 (에디터에서 조정 가능)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.0", ToolTip="불의 중심 반경 (cm)"))
+    float OnFireBurnRadius = 25.f;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.001", ToolTip="그라데이션 영역 폭 - 클수록 부드러운 경계 (cm)"))
+    float OnFireEdgeWidth = 60.f;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.0", ClampMax="100.0"))
+    float OnFireBurnIntensity_G = 25.f;
+    
+    // 그라데이션 부드러움 (머티리얼에서 smoothstep의 power 값으로 사용)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|OnFireParams", meta=(ClampMin="0.5", ClampMax="5.0", ToolTip="1=선형, >1=부드러운 곡선, <1=날카로운 경계"))
+    float EdgeFalloffPower = 2.0f;
+
+    // 불이 꺼질 때 애니메이션 설정
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|ExtinguishAnimation", meta=(ClampMin="0.1", ToolTip="소화 애니메이션 지속 시간 (초)"))
+    float ExtinguishAnimationDuration = 2.0f;  // 2초 동안 점진적으로 재로 변화
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Fire|ExtinguishAnimation", meta=(ToolTip="재 상태의 어두움 정도 (0=원본색, 1=완전히 검음)"))
+    float AshDarkenAmount = 0.7f;
+
 protected:
     UPROPERTY(EditAnywhere, Category="Fire|Cells", meta=(ClampMin="1.0"))
     float LeafCellSize = 50.0f;
@@ -189,10 +210,50 @@ private:
 
     void ApplySuppressionInSphereRecursive(APlayerBaseState* PlayerState, int32 CellIndex, const FVector& Center, double RadiusSquared, float SuppressionAmount);
     bool ApplySuppressionToCell(int32 CellIndex, float SuppressionAmount);
+  
+    void FreezeBurnMaterialAtCell(int32 CellIndex);
+    void ClearBurnMIForCell(int32 CellIndex);
+    
+    // 점진적 소화 애니메이션 함수들
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void StartExtinguishAnimation(int32 CellIndex);
+    
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void UpdateExtinguishAnimation(int32 CellIndex);
+    
+    UFUNCTION(BlueprintCallable, Category="Fire")
+    void CompleteExtinguishAnimation(int32 CellIndex);
 
+
+    
     UPROPERTY(Transient)
     TWeakObjectPtr<AVFXManager> VFXManager;
 
     UPROPERTY(Transient)
     TMap<int32, TWeakObjectPtr<AVFXActor>> ActiveFireVFXActors;
+
+    UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
+    UMaterialInterface* BurnMaterial = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, Category="Fire|Materials")
+    UMaterialParameterCollection* MPC_Fire = nullptr;
+    
+    // 머티리얼 변경을 제외할 액터 태그들
+    UPROPERTY(EditAnywhere, Category="Fire|Materials", meta=(ToolTip="이 태그를 가진 액터는 BurnMaterial로 변경되지 않음 (예: Floor, Ground)"))
+    TArray<FName> ExcludedActorTags = { FName("Floor"), FName("Ground") };
+
+    //런타임 데이터. 빈쯤 탄 상태 고정, 슬롯 캐쉬
+    UPROPERTY(Transient)
+    TMap<TWeakObjectPtr<UPrimitiveComponent>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICache;
+    TMap<TTuple<TWeakObjectPtr<UMeshComponent>, int32>, TWeakObjectPtr<UMaterialInstanceDynamic>> BurnMICacheBySlot;
+    
+    // 각 메시 슬롯이 몇 개의 셀에서 사용되는지 추적 (참조 카운팅)
+    TMap<TTuple<TWeakObjectPtr<UMeshComponent>, int32>, int32> BurnMIRefCount;
+
+    // 점진적 소화 애니메이션을 위한 데이터
+    UPROPERTY(Transient)
+    TMap<int32, FTimerHandle> ExtinguishAnimationTimers;
+    UPROPERTY(Transient)
+    TMap<int32, float> ExtinguishAnimationProgress;  // 0.0 ~ 1.0
+
 };
