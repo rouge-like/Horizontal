@@ -10,12 +10,15 @@ class UEvaluationItem;
 /**
  * 
  */
+enum class EValueType : uint8;
+class UTextBlock;
 UCLASS()
 class HORIZONTAL_API UResultUI : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	virtual void NativeConstruct() override;
 	UPROPERTY(meta = (BindWidget))
 	UEvaluationItem* PlayTimeItem;
 
@@ -39,4 +42,13 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	UEvaluationItem* WrongScoreItem;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TotalScoreText;
+
+	UPROPERTY()
+	TArray<UEvaluationItem*> EvaluationItems;
+
+	void SetValue(int32 ValueIndex, const FString& ValueString, const FString& TitleString, const FString& EvaluationString);
+	void SetResult(float TotalScore, int32 Rank);
 };

@@ -54,6 +54,8 @@ void ALobbyGameMode::StartGame()
 		false
 	);
 	
+	bUseSeamlessTravel = true;
+	
 	// 비동기 로드
 	// FLatentActionInfo LatentInfo;
 	// LatentInfo.CallbackTarget = this;

@@ -191,7 +191,7 @@ void AFireManager::CheckPlayerInFire(float DeltaSeconds)
             else continue;;
 
             const FBox FireBox = FBox::BuildAABB(Cell.WorldCenter, Cell.CellExtent);
-
+            
             if (PlayerBox.Intersect(FireBox))
             {
                 if (PBS)
@@ -392,21 +392,13 @@ AFireManager::FFireCellTickResult AFireManager::ProcessCollapseRecursive(int32 C
     }
 
     FFireCell& LeafCell = Cells[CellIndex];
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
     const FColor DebugColor = Cells[CellIndex].State == EFireCellState::Burning ? FColor::Red : (Cells[CellIndex].State == EFireCellState::Igniting ? FColor::Yellow : FColor::Green);
     DrawDebugBox(GetWorld(), Cells[CellIndex].WorldCenter, Cells[CellIndex].CellExtent, FQuat::Identity, DebugColor, false, 1.0f, 0, 1.0f);
 #endif
-
-=======
     
->>>>>>> Stashed changes
-=======
-    
->>>>>>> Stashed changes
     if (!Result.bAnyBurning)
     {
         Result.bAnyBurning = (Cells[CellIndex].State == EFireCellState::Burning || Cells[CellIndex].State == EFireCellState::Igniting)&& Cells[CellIndex].Heat > 0.0f;

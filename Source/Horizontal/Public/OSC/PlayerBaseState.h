@@ -19,8 +19,10 @@ enum class EValueType : uint8
 	NoMaskTime,
 	RescueScore,
 	ExtinguishScore,
-	WrongScore
+	WrongScore,
+	Max UMETA(Hidden)
 };
+ENUM_RANGE_BY_COUNT(EValueType, EValueType::Max)
 
 USTRUCT(BlueprintType)
 struct HORIZONTAL_API FEvaluationData
@@ -49,13 +51,13 @@ public:
 		{
 			if (Value >= ExcellentValue) return FString(TEXT("우수"));
 			if (Value >= GoodValue) return FString(TEXT("양호"));
-			return FString(TEXT("나쁨"));
+			return FString(TEXT("미흡"));
 		}
 		else
 		{
 			if (Value <= ExcellentValue) return FString(TEXT("우수"));
 			if (Value <= GoodValue) return FString(TEXT("양호"));
-			return FString(TEXT("나쁨"));
+			return FString(TEXT("미흡"));
 		}
 	};
 };
@@ -145,4 +147,13 @@ public:
 	void AddWrongScore(float Value);
 	
 	FString GetEvaluation(EValueType EvaluationKey);
+
+	bool bIsInteracting = false;
+	
+	UPROPERTY(EditAnywhere)
+	TMap<EValueType, FString> ValueUnitString;
+	UPROPERTY(EditAnywhere)
+	TMap<EValueType, FString> ValueTitleString;
+
+	float TotalScore;
 };

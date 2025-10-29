@@ -12,6 +12,8 @@ class UResultUI;
  */
 class UInputMappingContext;
 class UDialogueManagerComponent;
+class APlayerBaseState;
+enum class EValueType : uint8;
 UCLASS()
 class HORIZONTAL_API APlayerBaseController : public APlayerController
 {
@@ -48,4 +50,7 @@ public:
 
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowResultUI();
+	
+protected:
+	void SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS);
 };

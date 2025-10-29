@@ -137,7 +137,7 @@ void UPlayerInteractionComponent::Server_RequestInteraction_Implementation(
 		{
 			return; // 다른 사람이 먼저 상호작용 시작함
 		}
-
+		
 		if (AUsableItemBase* Item = Cast<AUsableItemBase>(TargetToInteractWith->GetOwner()))
 		{
 			APlayerBase* OwnerPlayer = Cast<APlayerBase>(GetOwner());

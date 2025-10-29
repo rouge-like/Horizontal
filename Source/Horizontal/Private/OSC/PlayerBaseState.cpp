@@ -41,6 +41,7 @@ void APlayerBaseState::Tick(float DeltaTime)
 	
 	if (!HasAuthority()) return;
 	if (!PlayerBase) return;
+	if (bIsInteracting) return;
 	PlayTime += DeltaTime;
 	if (PlayerBase->IsSprinting()) RunningTime += DeltaTime;
 	if (!PlayerBase->IsCrouched()) NotCrouchedTime += DeltaTime;
@@ -78,7 +79,8 @@ void APlayerBaseState::SetPawn(APawn* Pawn)
 
 void APlayerBaseState::AddFireTime(float DeltaTime)
 {
-	InFireTime += DeltaTime;
+	if (bIsInteracting) return;
+		InFireTime += DeltaTime;
 }
 
 void APlayerBaseState::AddRecueScore(float Value)
@@ -98,43 +100,56 @@ void APlayerBaseState::AddWrongScore(float Value)
 
 FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 {
+	FString Result;
 	if (EvaluationMap.Contains(EvaluationKey))
 	{
 		FEvaluationData Data = EvaluationMap[EvaluationKey];
-
+		
 		if (Data.ValueType == EValueType::PlayTime)
 		{
-			return Data.GetEvaluation(PlayTime);
+			Result = Data.GetEvaluation(PlayTime);
 		}
 		if (Data.ValueType == EValueType::InFireTime)
 		{
-			return Data.GetEvaluation(InFireTime);
+			Result =  Data.GetEvaluation(InFireTime);
 		}
 		if (Data.ValueType == EValueType::RunningTime)
 		{
-			return Data.GetEvaluation(RunningTime);
+			Result =  Data.GetEvaluation(RunningTime);
 		}
 		if (Data.ValueType == EValueType::NotCrouchedTime)
 		{
-			return Data.GetEvaluation(NotCrouchedTime);
+			Result =  Data.GetEvaluation(NotCrouchedTime);
 		}
 		if (Data.ValueType == EValueType::NoMaskTime)
 		{
-			return Data.GetEvaluation(NoMaskTime);
+			Result =  Data.GetEvaluation(NoMaskTime);
 		}
 		if (Data.ValueType == EValueType::RescueScore)
 		{
-			return Data.GetEvaluation(RescueScore);
+			Result =  Data.GetEvaluation(RescueScore);
 		}
 		if (Data.ValueType == EValueType::ExtinguishScore)
 		{
-			return Data.GetEvaluation(ExtinguishScore);
+			Result =  Data.GetEvaluation(ExtinguishScore);
 		}
 		if (Data.ValueType == EValueType::WrongScore)
 		{
-			return Data.GetEvaluation(WrongScore);
+			Result =  Data.GetEvaluation(WrongScore);
 		}
 	}
-	return FString(TEXT("유효하지 않음"));
+	if (Result == TEXT("우수"))
+	{
+		TotalScore += 12.5f;
+	}
+	else if (Result == TEXT("양호"))
+	{
+		TotalScore += 8;
+	}
+	else if (Result == TEXT("미흡"))
+	{
+		TotalScore += 3.5;
+	}
+	return Result;
 }
 

@@ -45,7 +45,13 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 
 	CurrentInteractableComponent = TargetComp; // 통합된 변수에 저장
 	CurrentDialogueLabel = StartingLabel;
-
+	
+	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
+	if (PlayerState)
+	{
+		PlayerState->bIsInteracting = true;
+	}
+	
 	if (UNPCInteractionComponent* NPCComp = Cast<UNPCInteractionComponent>(TargetComp))
 	{
 		ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
@@ -102,7 +108,10 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 	}
 
 	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
-
+	if (PlayerState)
+	{
+		PlayerState->bIsInteracting = false;
+	}
 	if (DialogueRow && PlayerState && !DialogueRow->EventTag.IsNone())
 	{
 		FString EventTagString = DialogueRow->EventTag.ToString();
@@ -130,7 +139,7 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			PlayerState->AddWrongScore(10);
 		}
 	}
-
+	
 	Client_EndDialogue();
 }
 

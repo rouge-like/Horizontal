@@ -5,6 +5,7 @@
 
 #include "Components/BoxComponent.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/PlayerBaseState.h"
 
 
 // Sets default values
@@ -74,6 +75,8 @@ void AWetTowel::HandleStopUse()
 	
 	if (IsValid(LocalOwner))
 	{
+		APlayerBaseState* PBS = LocalOwner->GetPlayerState<APlayerBaseState>();
+		if (PBS->bIsInteracting) return;
 		LocalOwner->SetHandsState(EHandsState::None);
 	}
 }
