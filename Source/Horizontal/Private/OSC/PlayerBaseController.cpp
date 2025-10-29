@@ -14,6 +14,7 @@
 #include "OSC/UI/ResultUI.h"
 
 #include "OnlineSubsystem.h"
+#include "GameFramework/GameStateBase.h"
 #include "Interfaces/VoiceInterface.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
@@ -29,12 +30,14 @@ void APlayerBaseController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	
 	if (IsLocalPlayerController())
 	{
-		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
-		if (Subsystem)
+		StartTalking();
+		oss = IOnlineSubsystem::Get();
+		if (oss)
 		{
-			IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+			VoiceInterface = oss->GetVoiceInterface();
 			if (VoiceInterface.IsValid())
 			{
 				VoiceInterface->StartNetworkedVoice(0);
@@ -43,6 +46,43 @@ void APlayerBaseController::BeginPlay()
 		}
 	}
 }
+
+void APlayerBaseController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (!IsLocalPlayerController() || !VoiceInterface.IsValid())
+	{
+		return;
+	}
+	
+	AGameStateBase* GameState = GetWorld()->GetGameState();
+	if (!GameState) return;
+
+	for (APlayerState* ps : GameState->PlayerArray)
+	{
+		if (!ps) continue;
+
+		// if (PlayerState == GetPlayerState<APlayerState>()) 
+		// {
+		// 	continue;
+		// }
+
+		FUniqueNetIdPtr UniqueNetId = ps->GetUniqueId().GetUniqueNetId();
+		if (UniqueNetId.IsValid())
+		{
+			float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
+
+			if (Amplitude > 0.1f)
+			{
+				UE_LOG(LogTemp, Log, TEXT("누군가 크게 말했습니다. 마이크를 이제 끕니다."), *ps->GetPlayerName(), Amplitude);
+
+				StopTalking();
+			}
+		}
+	}
+}
+
 
 void APlayerBaseController::OnPossess(APawn* aPawn)
 {

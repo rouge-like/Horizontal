@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "OnlineSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "PlayerBaseController.generated.h"
 
@@ -27,6 +28,8 @@ protected:
 	/** Gameplay Initialization */
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 	/** Possessed pawn initialization */
 	virtual void OnPossess(APawn* aPawn) override;
 
@@ -48,4 +51,8 @@ public:
 
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowResultUI();
+
+	TArray<TSharedRef<const FUniqueNetId>> Talkers;
+	class IOnlineSubsystem* oss;
+	IOnlineVoicePtr VoiceInterface;
 };

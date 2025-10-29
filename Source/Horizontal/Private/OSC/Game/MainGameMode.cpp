@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
 #include "Interfaces/VoiceInterface.h"
 #include "GameFramework/PlayerState.h"
 
@@ -20,6 +21,21 @@ AMainGameMode::AMainGameMode()
 void AMainGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+	if (Subsystem)
+	{
+		// 보이스 인터페이스를 찾아서 멤버 변수 'VoiceInterface'에 저장
+		VoiceInterface = Subsystem->GetVoiceInterface();
+		if (VoiceInterface.IsValid())
+		{
+			UE_LOG(LogTemp, Log, TEXT("AMainGameMode: Voice Interface successfully cached on server."));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("AMainGameMode: Failed to get Voice Interface!"));
+		}
+	}
 }
 
 void AMainGameMode::StartPlay()
@@ -67,22 +83,13 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	if (NewPlayer && NewPlayer->PlayerState)
+	if (NewPlayer && NewPlayer->PlayerState && VoiceInterface.IsValid())
 	{
-		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
-		if (Subsystem)
+		FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();
+		if (UniqueNetId.IsValid())
 		{
-			IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
-			if (VoiceInterface.IsValid())
-			{
-				FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();
-                
-				if (UniqueNetId.IsValid())
-				{
-					VoiceInterface->RegisterRemoteTalker(*UniqueNetId);
-					UE_LOG(LogTemp, Log, TEXT("Player '%s' has been registered as a remote talker."), *NewPlayer->GetName());
-				}
-			}
+			VoiceInterface->RegisterRemoteTalker(*UniqueNetId);
+			UE_LOG(LogTemp, Log, TEXT("Player '%s' has been registered as a remote talker."), *NewPlayer->GetName());
 		}
 	}
 	
