@@ -13,6 +13,7 @@
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/VoiceInterface.h"
 #include "GameFramework/PlayerState.h"
+#include "OSC/PlayerBaseState.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -83,6 +84,21 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
+	APlayerBaseState* PlayerState = NewPlayer->GetPlayerState<APlayerBaseState>();
+	if (PlayerState)
+	{
+		int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
+
+		if (PlayerCount == 1)
+		{
+			PlayerState->SetCanMove(true);
+		}
+		else
+		{
+			PlayerState->SetCanMove(false);
+		}
+	}
+	
 	if (NewPlayer && NewPlayer->PlayerState && VoiceInterface.IsValid())
 	{
 		FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();

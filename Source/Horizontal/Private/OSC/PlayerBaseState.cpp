@@ -3,6 +3,9 @@
 
 #include "OSC/PlayerBaseState.h"
 
+#include "OnlineSubsystem.h"
+#include "Blueprint/UserWidget.h"
+#include "Interfaces/VoiceInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
 
@@ -33,6 +36,7 @@ void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty
 	DOREPLIFETIME(APlayerBaseState, RepRescueScore);
 	DOREPLIFETIME(APlayerBaseState, RepExtinguishScore);
 	DOREPLIFETIME(APlayerBaseState, RepWrongScore);
+	DOREPLIFETIME(APlayerBaseState, bCanMove);
 }
 
 void APlayerBaseState::Tick(float DeltaTime)
@@ -136,5 +140,54 @@ FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 		}
 	}
 	return FString(TEXT("유효하지 않음"));
+}
+
+void APlayerBaseState::SetCanMove(bool bNewState)
+{
+	if (HasAuthority() && bCanMove != bNewState)
+	{
+		bCanMove = bNewState;
+		OnRep_CanMove(); // 서버 자신에게도 즉시 적용
+	}
+}
+
+void APlayerBaseState::OnRep_CanMove()
+{
+	APlayerController* PC = GetPlayerController();
+	if (PC && PC->IsLocalController())
+	{
+		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+		if (!Subsystem) return;
+        
+		IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+		if (!VoiceInterface.IsValid()) return;
+
+		if (bCanMove)
+		{
+			PC->EnableInput(PC);
+			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 활성화 (깨어남)"), *GetPlayerName());
+            
+			VoiceInterface->StartNetworkedVoice(0);
+
+			if (SleepingWidgetInstance)
+			{
+				SleepingWidgetInstance->RemoveFromParent();
+				SleepingWidgetInstance = nullptr;
+			}
+		}
+		else
+		{
+			PC->DisableInput(PC);
+			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 비활성화 (잠듦)"), *GetPlayerName());
+
+			VoiceInterface->StopNetworkedVoice(0);
+
+			if (!SleepingWidgetInstance && SleepingWidgetClass)
+			{
+				SleepingWidgetInstance = CreateWidget<UUserWidget>(PC, SleepingWidgetClass);
+				SleepingWidgetInstance->AddToViewport();
+			}
+		}
+	}
 }
 

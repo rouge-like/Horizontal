@@ -53,6 +53,7 @@ public:
 	void ClientShowResultUI();
 
 	TArray<TSharedRef<const FUniqueNetId>> Talkers;
-	class IOnlineSubsystem* oss;
-	IOnlineVoicePtr VoiceInterface;
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestWakeUp();
 };

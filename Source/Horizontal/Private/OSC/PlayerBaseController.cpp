@@ -14,6 +14,7 @@
 #include "OSC/UI/ResultUI.h"
 
 #include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
 #include "GameFramework/GameStateBase.h"
 #include "Interfaces/VoiceInterface.h"
 
@@ -30,54 +31,61 @@ void APlayerBaseController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	
-	if (IsLocalPlayerController())
-	{
-		StartTalking();
-		oss = IOnlineSubsystem::Get();
-		if (oss)
-		{
-			VoiceInterface = oss->GetVoiceInterface();
-			if (VoiceInterface.IsValid())
-			{
-				VoiceInterface->StartNetworkedVoice(0);
-				UE_LOG(LogTemp, Log, TEXT("Local voice capture started."));
-			}
-		}
-	}
+	//
+	// if (IsLocalPlayerController())
+	// {
+	// 	StartTalking();
+	// 	DisableInput(this);
+	// 	// oss = IOnlineSubsystem::Get();
+	// 	// if (oss)
+	// 	// {
+	// 	// 	VoiceInterface = oss->GetVoiceInterface();
+	// 	// 	if (VoiceInterface.IsValid())
+	// 	// 	{
+	// 	// 		VoiceInterface->StartNetworkedVoice(0);
+	// 	// 		UE_LOG(LogTemp, Log, TEXT("Local voice capture started."));
+	// 	// 	}
+	// 	// }
+	// }
 }
 
 void APlayerBaseController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	if (!IsLocalPlayerController() || !VoiceInterface.IsValid())
-	{
-		return;
-	}
-	
+	if (!IsLocalPlayerController()) return;
+
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+	if (!Subsystem) return;
+    
+	IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+	if (!VoiceInterface.IsValid()) return;
+    
 	AGameStateBase* GameState = GetWorld()->GetGameState();
 	if (!GameState) return;
 
-	for (APlayerState* ps : GameState->PlayerArray)
+	APlayerBaseState* MyPS = GetPlayerState<APlayerBaseState>();
+	if (!MyPS) return;
+    
+	if (!MyPS->bCanMove)
 	{
-		if (!ps) continue;
-
-		// if (PlayerState == GetPlayerState<APlayerState>()) 
-		// {
-		// 	continue;
-		// }
-
-		FUniqueNetIdPtr UniqueNetId = ps->GetUniqueId().GetUniqueNetId();
-		if (UniqueNetId.IsValid())
+		for (APlayerState* OtherPS : GameState->PlayerArray)
 		{
-			float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
-
-			if (Amplitude > 0.1f)
+			if (!OtherPS || OtherPS == MyPS) continue; 
+          
+			APlayerBaseState* OtherBasePS = Cast<APlayerBaseState>(OtherPS);
+			if (OtherBasePS && OtherBasePS->bCanMove)
 			{
-				UE_LOG(LogTemp, Log, TEXT("누군가 크게 말했습니다. 마이크를 이제 끕니다."), *ps->GetPlayerName(), Amplitude);
-
-				StopTalking();
+				FUniqueNetIdPtr UniqueNetId = OtherPS->GetUniqueId().GetUniqueNetId();
+				if (UniqueNetId.IsValid())
+				{
+					float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
+					if (Amplitude > 0.5f) // 일정 크기 이상이면
+					{
+						Server_RequestWakeUp(); // 서버에 "깨어남" 요청
+						return; 
+					}
+				}
 			}
 		}
 	}
@@ -109,6 +117,27 @@ void APlayerBaseController::SetupInputComponent()
 			{
 				Subsystem->AddMappingContext(CurrentContext, 0);
 			}
+		}
+	}
+}
+
+void APlayerBaseController::Server_RequestWakeUp_Implementation()
+{
+	APlayerBaseState* WakingPlayerPS = GetPlayerState<APlayerBaseState>();
+	if (WakingPlayerPS)
+	{
+		WakingPlayerPS->SetCanMove(true);
+	}
+    
+	AGameStateBase* GS = GetWorld()->GetGameState();
+	if (!GS) return;
+    
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		APlayerBaseState* OtherPS = Cast<APlayerBaseState>(PS);
+		if (OtherPS && OtherPS != WakingPlayerPS && OtherPS->bCanMove)
+		{
+			OtherPS->SetCanMove(false);
 		}
 	}
 }
