@@ -15,6 +15,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBaseState.h"
+#include <Khc/Gimmick/MainGameState.h>
 
 AMainGameMode::AMainGameMode()
 {
@@ -81,13 +82,6 @@ void AMainGameMode::StartPlay()
 	}
 }
 
-void AMainGameMode::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(AMainGameMode, bVoiceEventCompleted);
-}
-
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
@@ -140,6 +134,11 @@ void AMainGameMode::CompleteVoiceEvent()
 {
 	if (HasAuthority())
 	{
-		bVoiceEventCompleted = true;
+		// GameMode의 변수 대신 GameState의 변수를 변경합니다.
+		AMainGameState* GS = GetGameState<AMainGameState>();
+		if (GS)
+		{
+			GS->bVoiceEventCompleted = true;
+		}
 	}
 }

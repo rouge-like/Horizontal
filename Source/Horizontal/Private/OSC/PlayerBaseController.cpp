@@ -18,6 +18,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "Interfaces/VoiceInterface.h"
 #include "OSC/Game/MainGameMode.h"
+#include "Khc/Gimmick/MainGameState.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -31,23 +32,6 @@ APlayerBaseController::APlayerBaseController()
 void APlayerBaseController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	//
-	// if (IsLocalPlayerController())
-	// {
-	// 	StartTalking();
-	// 	DisableInput(this);
-	// 	// oss = IOnlineSubsystem::Get();
-	// 	// if (oss)
-	// 	// {
-	// 	// 	VoiceInterface = oss->GetVoiceInterface();
-	// 	// 	if (VoiceInterface.IsValid())
-	// 	// 	{
-	// 	// 		VoiceInterface->StartNetworkedVoice(0);
-	// 	// 		UE_LOG(LogTemp, Log, TEXT("Local voice capture started."));
-	// 	// 	}
-	// 	// }
-	// }
 }
 
 void APlayerBaseController::Tick(float DeltaTime)
@@ -56,34 +40,36 @@ void APlayerBaseController::Tick(float DeltaTime)
 	
 	if (!IsLocalController()) return;
 
-    // --- 1. GameMode의 이벤트 완료 플래그 확인 ---
-    AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
-	if (GameMode->bVoiceEventCompleted)
-		return;
+	AMainGameState* GS = GetWorld()->GetGameState<AMainGameState>();
+	if (!GS) return;
 
-    APlayerBaseState* MyPS = GetPlayerState<APlayerBaseState>();
-    if (!MyPS) return;
+    APlayerBaseState* PS = GetPlayerState<APlayerBaseState>();
+    if (!PS) return;
 
-    // --- 2. 보이스 인터페이스 가져오기 (매 틱 호출, 준비될 때까지 대기) ---
-    IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
-    if (!Subsystem) return;
+    IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld());
+    if (!OSS) return;
     
-    IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
-    if (!VoiceInterface.IsValid()) return; // 아직 준비 안 됨
+    IOnlineVoicePtr VoiceInterface = OSS->GetVoiceInterface();
+    if (!VoiceInterface.IsValid()) return;
 
-    AGameStateBase* GameState = GetWorld()->GetGameState();
-    if (!GameState) return;
+	if (GS->bVoiceEventCompleted)
+	{
+		if (bVoiceChatInitialized)
+		{
+			VoiceInterface->StopNetworkedVoice(0);
+			bVoiceChatInitialized = false;
+			UE_LOG(LogTemp, Log, TEXT("Player %s (Event End) Mic OFF"), *PS->GetPlayerName());
+		}
+		return;
+	}
 
-    // --- 3. 자신의 상태(bCanMove)에 따라 보이스 켜기 또는 듣기 실행 ---
-    if (MyPS->bCanMove)
+    if (PS->bCanMove)
     {
-        // [1P 로직: 움직일 수 있는 플레이어]
-        // 아직 마이크를 켜지 않았다면 켭니다 (단 한 번만 실행).
         if (!bVoiceChatInitialized)
         {
             VoiceInterface->StartNetworkedVoice(0);
             bVoiceChatInitialized = true;
-            UE_LOG(LogTemp, Log, TEXT("Player %s (1P) Mic ON"), *MyPS->GetPlayerName());
+            UE_LOG(LogTemp, Log, TEXT("Player %s (1P) Mic ON"), *PS->GetPlayerName());
         }
     }
     else
@@ -95,13 +81,13 @@ void APlayerBaseController::Tick(float DeltaTime)
         {
              VoiceInterface->StopNetworkedVoice(0);
              bVoiceChatInitialized = false;
-             UE_LOG(LogTemp, Log, TEXT("Player %s (2P) Mic OFF"), *MyPS->GetPlayerName());
+             UE_LOG(LogTemp, Log, TEXT("Player %s (2P) Mic OFF"), *PS->GetPlayerName());
         }
 
         // 다른 '깨어있는' 플레이어의 소리를 듣습니다.
-        for (APlayerState* OtherPS : GameState->PlayerArray)
+        for (APlayerState* OtherPS : GS->PlayerArray)
         {
-           if (!OtherPS || OtherPS == MyPS) continue; 
+           if (!OtherPS || OtherPS == PS) continue; 
            
            APlayerBaseState* OtherBasePS = Cast<APlayerBaseState>(OtherPS);
            if (OtherBasePS && OtherBasePS->bCanMove) // 1P를 찾음
