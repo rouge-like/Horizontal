@@ -8,6 +8,7 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "OSC/Sound/SoundManager.h"
 
 
 UNPCFSMComponent::UNPCFSMComponent()
@@ -80,7 +81,6 @@ void UNPCFSMComponent::SetState(ENPCState NewState)
 	ANPCBase* OwnerPawn = Cast<ANPCBase>(GetOwner());
 	if (!OwnerPawn || !OwnerPawn->InteractionComp) return; // InteractionComp도 확인
 
-	// 상태가 변경될 때마다 InteractionComp의 상태도 함께 변경
 	OwnerPawn->InteractionComp->SetInteractable(CurrentState == ENPCState::Wait);
 	
 	switch (CurrentState)

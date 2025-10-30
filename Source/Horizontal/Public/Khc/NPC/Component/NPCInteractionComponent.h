@@ -9,7 +9,7 @@ UENUM(BlueprintType)
 enum class EInteractionType : uint8
 {
 	InformSituation	UMETA(DisplayName = "Inform Situation"),
-	ClearObstacle	UMETA(DisplayName = "Clear Obstacle"),
+	Attention	UMETA(DisplayName = "Set Attention"),
 	CalmDown		UMETA(DisplayName = "Calm Down")
 };
 

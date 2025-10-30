@@ -50,6 +50,9 @@ protected:
 	FVector ObstacleTargetLocation;
 	FRotator ObstacleTargetRotation;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayEmergencyBGM(USoundBase* SoundToPlay);
+
 public:
 	virtual void Tick(float DeltaTime) override;
 	

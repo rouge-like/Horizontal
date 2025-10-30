@@ -19,6 +19,9 @@
 #include "OSC/PlayerBaseState.h"
 #include <Khc/Player/PlayerInteractionComponent.h>
 
+#include "OSC/Sound/SoundManager.h"
+
+class ASoundManager;
 class AAIController;
 
 UDialogueManagerComponent::UDialogueManagerComponent()
@@ -60,6 +63,25 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 				NPCController->SetFocus(PC->GetPawn());
 			}
 
+			ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+			EInteractionType type = NPC->InteractionComp->InteractionType;
+	
+			if (SoundManager)
+			{
+				switch (type)
+				{
+				case EInteractionType::InformSituation:
+					SoundManager->SpawnSoundAtLocation(FName(TEXT("What")), NPC->GetActorLocation());
+					break;
+				case EInteractionType::Attention:
+					SoundManager->SpawnSoundAtLocation(FName(TEXT("Attention")), NPC->GetActorLocation());
+					break;
+				case EInteractionType::CalmDown:
+					SoundManager->SpawnSoundAtLocation(FName(TEXT("Help")), NPC->GetActorLocation());
+					break;
+				}
+			}
+			
 			if (NPC->AStarMovementComp)
 			{
 				NPC->AStarMovementComp->OnMovementFinished.RemoveDynamic(this, &UDialogueManagerComponent::OnNPCMovementFinished);
