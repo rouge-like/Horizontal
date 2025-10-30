@@ -54,7 +54,7 @@ void ALobbyGameMode::StartGame()
 		false
 	);
 	
-	bUseSeamlessTravel = true;
+	// bUseSeamlessTravel = true;
 	
 	// 비동기 로드
 	// FLatentActionInfo LatentInfo;

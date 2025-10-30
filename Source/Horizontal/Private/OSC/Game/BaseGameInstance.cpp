@@ -3,7 +3,7 @@
 
 #include "OSC/Game/BaseGameInstance.h"
 #include "MoviePlayer.h"
-#include "Blueprint/UserWidget.h"
+#include "OSC/PlayerBaseState.h"
 
 void UBaseGameInstance::Init()
 {
@@ -31,4 +31,12 @@ void UBaseGameInstance::BeginLoadingScreen(const FString& MapName)
 
 void UBaseGameInstance::EndLoadingScreen(UWorld* LoadedWorld)
 {
+}
+
+void UBaseGameInstance::AddRank(EValueType Type, int32 Rank)
+{
+	if (Ranks.Contains(Type))
+		Ranks[Type] = Rank;
+	else
+		Ranks.Add(Type, Rank);
 }

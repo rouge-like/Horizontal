@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Khc/NPC/NPCBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "OSC/PlayerBaseController.h"
 
 AMainGameMode::AMainGameMode()
 {
@@ -79,4 +80,31 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 	
 	UE_LOG(LogTemp, Log, TEXT("A new player '%s' has logged in. Bound events to %d interactable objects."), *NewPlayer->GetName(), AllInteractableObjectsInLevel.Num());
+}
+
+void AMainGameMode::OnClientEndSimulation()
+{
+	APlayerBaseController* PC = Cast<APlayerBaseController>(GetWorld()->GetFirstPlayerController());
+	PC->ShowEndButton();
+}
+
+void AMainGameMode::EndSimulation()
+{
+	for (FConstPlayerControllerIterator PCI = GetWorld()->GetPlayerControllerIterator(); PCI; ++PCI)
+	{
+		if (APlayerController* PC = PCI->Get())
+		{
+			if (APlayerBaseController* PBC = Cast<APlayerBaseController>(PC))
+			{
+				if (!PBC->IsLocalController())
+					PBC->GoToResultLevel();
+			}
+		}
+	}
+
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+	{
+		UGameplayStatics::OpenLevel(GetWorld(), FName("/Game/OSC/Map/ResultLevel"));
+	}, 0.5f, false);
 }

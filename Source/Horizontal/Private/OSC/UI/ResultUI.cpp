@@ -3,8 +3,11 @@
 
 #include "OSC/UI/ResultUI.h"
 
+#include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseState.h"
+#include "OSC/Game/MainGameMode.h"
 #include "OSC/UI/EvaluationItem.h"
 
 void UResultUI::NativeConstruct()
@@ -19,6 +22,9 @@ void UResultUI::NativeConstruct()
 	EvaluationItems.Add(RescueScoreItem);
 	EvaluationItems.Add(ExtinguishScoreItem);
 	EvaluationItems.Add(WrongScoreItem);
+
+	EndButton->SetVisibility(ESlateVisibility::Hidden);
+	EndButton->OnClicked.AddDynamic(this, &UResultUI::OnEndButtonClicked);
 }
 
 void UResultUI::SetValue(int32 ValueIndex, const FString& ValueString, const FString& TitleString, const FString& EvaluationString)
@@ -33,5 +39,11 @@ void UResultUI::SetValue(int32 ValueIndex, const FString& ValueString, const FSt
 void UResultUI::SetResult(float TotalScore, int32 Rank)
 {
 	TotalScoreText->SetText(FText::FromString(FString::Printf(TEXT("%.1f점"), TotalScore)));
+}
+
+void UResultUI::OnEndButtonClicked()
+{
+	AMainGameMode* GM = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
+	GM->EndSimulation();
 }
 

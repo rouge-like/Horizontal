@@ -157,6 +157,12 @@ void AFireManager::Tick(float DeltaSeconds)
     CheckPlayerInFire(DeltaSeconds);
 }
 
+void AFireManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    Super::EndPlay(EndPlayReason);
+    GetWorldTimerManager().ClearAllTimersForObject(this);
+}
+
 void AFireManager::CheckPlayerInFire(float DeltaSeconds)
 {
     for (uint64 i = 0; i < GetWorld()->GetGameState()->PlayerArray.Num(); i++)
@@ -1060,6 +1066,11 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
 
 void AFireManager::DeactivateFireVFX(int32 CellIndex)
 {
+    if (!Cells.IsValidIndex(CellIndex))
+    {
+        return;
+    }
+    
     //프리즈 추가(메테리얼 고정)
     FreezeBurnMaterialAtCell(CellIndex);
     

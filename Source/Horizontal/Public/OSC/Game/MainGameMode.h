@@ -29,4 +29,8 @@ private:
 
 	UPROPERTY()
 	TArray<ANPCBase*> AllNPCsInLevel;
+
+public:
+	void OnClientEndSimulation();
+	void EndSimulation();
 };

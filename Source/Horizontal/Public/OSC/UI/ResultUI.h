@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "ResultUI.generated.h"
 
+class UButton;
 class UEvaluationItem;
 /**
  * 
@@ -45,10 +46,15 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* TotalScoreText;
-
+	
+	UPROPERTY(meta = (BindWidget))
+	UButton* EndButton;
+	
 	UPROPERTY()
 	TArray<UEvaluationItem*> EvaluationItems;
-
+	
 	void SetValue(int32 ValueIndex, const FString& ValueString, const FString& TitleString, const FString& EvaluationString);
 	void SetResult(float TotalScore, int32 Rank);
+	UFUNCTION()
+	void OnEndButtonClicked();
 };

@@ -43,14 +43,25 @@ protected:
 
 	UPROPERTY()
 	UResultUI* ResultUI;
-	
+
+	bool bIsClientEndSimulation = false;
+
+	UPROPERTY(EditAnywhere)
+	FString ResultURL;
 public:
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void ServerChangeToSpectator();
 
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowResultUI();
-	
+
+	void ShowEndButton();
+
+	UFUNCTION(Client, Reliable)
+	void GoToResultLevel();
+
+	void OpenResultLevel();
 protected:
 	void SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS);
 };
+

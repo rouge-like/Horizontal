@@ -5,6 +5,7 @@
 
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/Game/BaseGameInstance.h"
 
 APlayerBaseState::APlayerBaseState()
 {
@@ -19,6 +20,8 @@ void APlayerBaseState::BeginPlay()
 	{
 		GetWorldTimerManager().SetTimer(UpdateValueTimer, this, &APlayerBaseState::UpdateValue, 1, true);
 	}
+
+	GI = GetWorld()->GetGameInstance<UBaseGameInstance>();
 }
 
 void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -141,15 +144,20 @@ FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 	if (Result == TEXT("우수"))
 	{
 		TotalScore += 12.5f;
+		GI->AddRank(EvaluationKey, 0);
 	}
 	else if (Result == TEXT("양호"))
 	{
 		TotalScore += 8;
+		GI->AddRank(EvaluationKey, 1);
 	}
 	else if (Result == TEXT("미흡"))
 	{
 		TotalScore += 3.5;
+		GI->AddRank(EvaluationKey, 2);
 	}
+
+
 	return Result;
 }
 

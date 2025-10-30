@@ -6,10 +6,13 @@
 #include "Khc/Player/DialogueManagerComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HorizontalCameraManager.h"
+#include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/SpectatorPawn.h"
+#include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseState.h"
+#include "OSC/Game/MainGameMode.h"
 #include "OSC/UI/EvaluationItem.h"
 #include "OSC/UI/ResultUI.h"
 
@@ -56,6 +59,26 @@ void APlayerBaseController::SetupInputComponent()
 	}
 }
 
+void APlayerBaseController::ShowEndButton()
+{
+	// 서버 온리
+	
+	bIsClientEndSimulation = true;
+	if (ResultUI)
+	{
+		ResultUI->EndButton->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void APlayerBaseController::GoToResultLevel_Implementation()
+{
+	//UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/OSC/Map/LobbyLevel"));
+	ClientTravel(ResultURL, TRAVEL_Absolute);
+}
+void APlayerBaseController::OpenResultLevel()
+{
+	UGameplayStatics::OpenLevel(GetWorld(), FName(ResultURL));
+}
 void APlayerBaseController::SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS)
 {
 	switch (Type)
@@ -93,7 +116,7 @@ void APlayerBaseController::SetValue(EValueType Type, float& OutValue, APlayerBa
 void APlayerBaseController::ServerChangeToSpectator_Implementation()
 {
 	APawn* P = GetPawn();
-	AGameModeBase* GM = GetWorld()->GetAuthGameMode();
+	AMainGameMode* GM = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
 	
 	ASpectatorPawn* Spectator = GetWorld()->SpawnActor<ASpectatorPawn>(GM->SpectatorClass, P->GetTransform());
 	Possess(Spectator);
@@ -105,7 +128,11 @@ void APlayerBaseController::ServerChangeToSpectator_Implementation()
 	if (IsLocalPlayerController())
 		ClientShowResultUI_Implementation();
 	else
+	{
 		ClientShowResultUI();
+		
+		GM->OnClientEndSimulation();
+	}
 }
 
 void APlayerBaseController::ClientShowResultUI_Implementation()
@@ -130,6 +157,13 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 			}
 
 			ResultUI->SetResult(PBS->TotalScore, 0);
+
+			bIsClientEndSimulation = true;
+			
+			if (ResultUI)
+			{
+				ResultUI->EndButton->SetVisibility(ESlateVisibility::Visible);
+			}
 		}
 	}
 }

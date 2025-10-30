@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "PlayerBaseState.generated.h"
 
+class UBaseGameInstance;
 /**
  * 
  */
@@ -73,6 +74,9 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY()
+	UBaseGameInstance* GI;
+	
 	UPROPERTY(EditDefaultsOnly)
 	float Size = 35;
 
