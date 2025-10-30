@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "OnlineSubsystem.h"
 #include "GameFramework/GameModeBase.h"
 #include "MainGameMode.generated.h"
 
@@ -29,4 +30,10 @@ private:
 
 	UPROPERTY()
 	TArray<ANPCBase*> AllNPCsInLevel;
+
+	IOnlineVoicePtr VoiceInterface;
+
+public:
+	void CompleteVoiceEvent();
+
 };

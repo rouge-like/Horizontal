@@ -108,7 +108,7 @@ float AAStarNavigationManager::FindPathRecursive(FVector StartLocation, FVector 
                     float TotalCost = CostToLink + CostFromLink;
                     if (TotalCost < MinTotalCost)
                     {
-                        MinTotalCost = TotalCost;
+							MinTotalCost = TotalCost;
                         BestFullPath = PathToLink;
                         BestFullPath.Append(PathFromLink);
                     }

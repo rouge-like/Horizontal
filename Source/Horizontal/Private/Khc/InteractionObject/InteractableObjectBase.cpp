@@ -9,7 +9,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
 #include "Khc/Player/DialogueManagerComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "OSC/Sound/SoundManager.h"
 
 AInteractableObjectBase::AInteractableObjectBase()
 {
@@ -61,6 +63,8 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 
 	UE_LOG(LogTemp, Warning, TEXT("'%s' received EventTag: %s"), *GetName(), *EventTag.ToString());
 
+	ASoundManager* SoundManager = Cast<ASoundManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ASoundManager::StaticClass()));
+	
 	// 1. Obstruction 일때 EndGood -> 파괴
 	if (EventTag == "DestroyObstacle")
 	{
@@ -72,11 +76,7 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 		bObstacleMove = true; 
        
 		OnRep_ObstacleMove();
-		
-		//(X=-252.000000,Y=237.000000,Z=420.000000)
-		//(Pitch=-39.999999,Yaw=90.000000,Roll=0.000001)
-		//(X=-252.000000,Y=54.000000,Z=368.000000)
-		//(Pitch=90.000000,Yaw=90.000000,Roll=0.000000)
+		SoundManager->SpawnSoundAtLocation(FName(TEXT("Obstacle")), GetActorLocation());
 	}
 	else if (EventTag == "ResetInteraction")
 	{
@@ -100,12 +100,31 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 	{
 		bIsMove = true;
 		originRotYaw = GetActorRotation().Yaw;
+		SoundManager->SpawnSoundAtLocation(FName(TEXT("DoorOpen")), GetActorLocation());
+
 		OnRep_IsMove();
 	}
 	else if (EventTag == "OpenMainDoor")
 	{
 		bMainDoorMove = true;
+		SoundManager->SpawnSoundAtLocation(FName(TEXT("MainDoorButton")), GetActorLocation());
+		SoundManager->SpawnSoundAtLocation(FName(TEXT("MainDoorOpen")), GetActorLocation());
+		
 		OnRep_MainDoorMove();
+	}
+	else if (EventTag == "EmergencyBell")
+	{
+		USoundBase* BGMSound = LoadObject<USoundBase>(nullptr, TEXT("/Script/Engine.SoundCue'/Game/khc/SFX/Emergency_Cue.Emergency_Cue'"));
+
+		if (BGMSound && SoundManager)
+		{
+			// 2. [서버] 멀티캐스트 RPC를 호출하여, 로드한 사운드 애셋을 모든 클라이언트에게 전달
+			Multicast_PlayEmergencyBGM(BGMSound);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("EmergencyBell BGM asset NOT found at hardcoded path!"));
+		}	
 	}
 }
 
@@ -133,9 +152,18 @@ void AInteractableObjectBase::OnRep_MainDoorMove()
 	}
 }
 
+void AInteractableObjectBase::Multicast_PlayEmergencyBGM_Implementation(USoundBase* SoundToPlay)
+{
+	if (SoundToPlay)
+	{
+		UGameplayStatics::PlaySound2D(GetWorld(), SoundToPlay, 1.0f, 1.0f, 0.0f, nullptr, nullptr, true);
+	}
+}
+
 void AInteractableObjectBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
 	if (bIsMove)
 	{
 		const float TargetYaw = originRotYaw + (-140.0f);

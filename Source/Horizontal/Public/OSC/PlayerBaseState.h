@@ -145,4 +145,20 @@ public:
 	void AddWrongScore(float Value);
 	
 	FString GetEvaluation(EValueType EvaluationKey);
+
+
+	// 시작 상호작용
+	void SetCanMove(bool bNewState);
+	UFUNCTION()
+	void OnRep_CanMove();
+
+	UPROPERTY(ReplicatedUsing = OnRep_CanMove)
+	bool bCanMove = false;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<class UUserWidget> SleepingWidgetClass;
+
+	/** 런타임에 생성된 '잠자는 중' UI 인스턴스 */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> SleepingWidgetInstance;
 };
