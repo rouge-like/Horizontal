@@ -58,6 +58,8 @@ void APlayerBaseController::Tick(float DeltaTime)
 
     // --- 1. GameMode의 이벤트 완료 플래그 확인 ---
     AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	if (GameMode->bVoiceEventCompleted)
+		return;
 
     APlayerBaseState* MyPS = GetPlayerState<APlayerBaseState>();
     if (!MyPS) return;
