@@ -167,7 +167,7 @@ void APlayerBaseController::Server_RequestWakeUp_Implementation()
 		APlayerBaseState* OtherPS = Cast<APlayerBaseState>(PS);
 		if (OtherPS && OtherPS != WakingPlayerPS && OtherPS->bCanMove)
 		{
-			OtherPS->SetCanMove(false);
+			OtherPS->SetCanMove(true);
 		}
 	}
 
