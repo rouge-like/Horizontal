@@ -77,10 +77,6 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
        
 		OnRep_ObstacleMove();
 		SoundManager->SpawnSoundAtLocation(FName(TEXT("Obstacle")), GetActorLocation());
-		//(X=-252.000000,Y=237.000000,Z=420.000000)
-		//(Pitch=-39.999999,Yaw=90.000000,Roll=0.000001)
-		//(X=-252.000000,Y=54.000000,Z=368.000000)
-		//(Pitch=90.000000,Yaw=90.000000,Roll=0.000000)
 	}
 	else if (EventTag == "ResetInteraction")
 	{
