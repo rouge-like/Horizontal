@@ -156,19 +156,11 @@ void APlayerBaseState::OnRep_CanMove()
 	APlayerController* PC = GetPlayerController();
 	if (PC && PC->IsLocalController())
 	{
-		IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
-		if (!Subsystem) return;
-        
-		IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
-		if (!VoiceInterface.IsValid()) return;
-
 		if (bCanMove)
 		{
 			PC->EnableInput(PC);
 			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 활성화 (깨어남)"), *GetPlayerName());
             
-			VoiceInterface->StartNetworkedVoice(0);
-
 			if (SleepingWidgetInstance)
 			{
 				SleepingWidgetInstance->RemoveFromParent();
@@ -179,8 +171,6 @@ void APlayerBaseState::OnRep_CanMove()
 		{
 			PC->DisableInput(PC);
 			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 비활성화 (잠듦)"), *GetPlayerName());
-
-			VoiceInterface->StopNetworkedVoice(0);
 
 			if (!SleepingWidgetInstance && SleepingWidgetClass)
 			{

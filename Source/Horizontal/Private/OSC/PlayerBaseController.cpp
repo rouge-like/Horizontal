@@ -17,6 +17,7 @@
 #include "OnlineSubsystemUtils.h"
 #include "GameFramework/GameStateBase.h"
 #include "Interfaces/VoiceInterface.h"
+#include "OSC/Game/MainGameMode.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -53,42 +54,69 @@ void APlayerBaseController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	if (!IsLocalPlayerController()) return;
+	if (!IsLocalController()) return;
 
-	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
-	if (!Subsystem) return;
-    
-	IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
-	if (!VoiceInterface.IsValid()) return;
-    
-	AGameStateBase* GameState = GetWorld()->GetGameState();
-	if (!GameState) return;
+    // --- 1. GameMode의 이벤트 완료 플래그 확인 ---
+    AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 
-	APlayerBaseState* MyPS = GetPlayerState<APlayerBaseState>();
-	if (!MyPS) return;
+    APlayerBaseState* MyPS = GetPlayerState<APlayerBaseState>();
+    if (!MyPS) return;
+
+    // --- 2. 보이스 인터페이스 가져오기 (매 틱 호출, 준비될 때까지 대기) ---
+    IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+    if (!Subsystem) return;
     
-	if (!MyPS->bCanMove)
-	{
-		for (APlayerState* OtherPS : GameState->PlayerArray)
-		{
-			if (!OtherPS || OtherPS == MyPS) continue; 
-          
-			APlayerBaseState* OtherBasePS = Cast<APlayerBaseState>(OtherPS);
-			if (OtherBasePS && OtherBasePS->bCanMove)
-			{
-				FUniqueNetIdPtr UniqueNetId = OtherPS->GetUniqueId().GetUniqueNetId();
-				if (UniqueNetId.IsValid())
-				{
-					float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
-					if (Amplitude > 0.5f) // 일정 크기 이상이면
-					{
-						Server_RequestWakeUp(); // 서버에 "깨어남" 요청
-						return; 
-					}
-				}
-			}
-		}
-	}
+    IOnlineVoicePtr VoiceInterface = Subsystem->GetVoiceInterface();
+    if (!VoiceInterface.IsValid()) return; // 아직 준비 안 됨
+
+    AGameStateBase* GameState = GetWorld()->GetGameState();
+    if (!GameState) return;
+
+    // --- 3. 자신의 상태(bCanMove)에 따라 보이스 켜기 또는 듣기 실행 ---
+    if (MyPS->bCanMove)
+    {
+        // [1P 로직: 움직일 수 있는 플레이어]
+        // 아직 마이크를 켜지 않았다면 켭니다 (단 한 번만 실행).
+        if (!bVoiceChatInitialized)
+        {
+            VoiceInterface->StartNetworkedVoice(0);
+            bVoiceChatInitialized = true;
+            UE_LOG(LogTemp, Log, TEXT("Player %s (1P) Mic ON"), *MyPS->GetPlayerName());
+        }
+    }
+    else
+    {
+        // [2P 로직: 잠들어 있는 플레이어]
+        
+        // 아직 마이크를 끄지 않았다면 끕니다 (단 한 번만 실행).
+        if (bVoiceChatInitialized)
+        {
+             VoiceInterface->StopNetworkedVoice(0);
+             bVoiceChatInitialized = false;
+             UE_LOG(LogTemp, Log, TEXT("Player %s (2P) Mic OFF"), *MyPS->GetPlayerName());
+        }
+
+        // 다른 '깨어있는' 플레이어의 소리를 듣습니다.
+        for (APlayerState* OtherPS : GameState->PlayerArray)
+        {
+           if (!OtherPS || OtherPS == MyPS) continue; 
+           
+           APlayerBaseState* OtherBasePS = Cast<APlayerBaseState>(OtherPS);
+           if (OtherBasePS && OtherBasePS->bCanMove) // 1P를 찾음
+           {
+              FUniqueNetIdPtr UniqueNetId = OtherPS->GetUniqueId().GetUniqueNetId();
+              if (UniqueNetId.IsValid())
+              {
+                 float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
+                 if (Amplitude > 0.5f)
+                 {
+                    Server_RequestWakeUp(); // "깨어남" 요청
+                    return; 
+                 }
+              }
+           }
+        }
+    }
 }
 
 
@@ -139,6 +167,12 @@ void APlayerBaseController::Server_RequestWakeUp_Implementation()
 		{
 			OtherPS->SetCanMove(false);
 		}
+	}
+
+	AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	if (GameMode)
+	{
+		GameMode->CompleteVoiceEvent(); // "보이스 이벤트 끝!"
 	}
 }
 

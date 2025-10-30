@@ -13,6 +13,7 @@
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/VoiceInterface.h"
 #include "GameFramework/PlayerState.h"
+#include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBaseState.h"
 
 AMainGameMode::AMainGameMode()
@@ -80,6 +81,13 @@ void AMainGameMode::StartPlay()
 	}
 }
 
+void AMainGameMode::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMainGameMode, bVoiceEventCompleted);
+}
+
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
@@ -126,4 +134,12 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 	}
 	
 	UE_LOG(LogTemp, Log, TEXT("A new player '%s' has logged in. Bound events to %d interactable objects."), *NewPlayer->GetName(), AllInteractableObjectsInLevel.Num());
+}
+
+void AMainGameMode::CompleteVoiceEvent()
+{
+	if (HasAuthority())
+	{
+		bVoiceEventCompleted = true;
+	}
 }

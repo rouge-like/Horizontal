@@ -56,4 +56,6 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestWakeUp();
+
+	bool bVoiceChatInitialized = false;
 };
