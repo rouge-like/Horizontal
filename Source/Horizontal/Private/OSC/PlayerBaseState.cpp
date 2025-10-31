@@ -36,6 +36,8 @@ void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty
 	DOREPLIFETIME(APlayerBaseState, RepRescueScore);
 	DOREPLIFETIME(APlayerBaseState, RepExtinguishScore);
 	DOREPLIFETIME(APlayerBaseState, RepWrongScore);
+	DOREPLIFETIME(APlayerBaseState, bCanMove);
+
 }
 
 void APlayerBaseState::Tick(float DeltaTime)
@@ -159,5 +161,32 @@ FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 
 	GI->TotalScore = TotalScore;
 	return Result;
+}
+
+void APlayerBaseState::SetCanMove(bool bNewState)
+{
+	if (HasAuthority() && bCanMove != bNewState)
+	{
+		bCanMove = bNewState;
+		OnRep_CanMove(); // 서버
+	}
+}
+
+void APlayerBaseState::OnRep_CanMove()
+{
+	APlayerController* PC = GetPlayerController();
+	if (PC && PC->IsLocalController())
+	{
+		if (bCanMove)
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 활성화 (깨어남)"), *GetPlayerName());
+		}
+		else
+		{
+			PC->SetInputMode(FInputModeUIOnly());
+			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 비활성화 (잠듦)"), *GetPlayerName());
+		}
+	}
 }
 

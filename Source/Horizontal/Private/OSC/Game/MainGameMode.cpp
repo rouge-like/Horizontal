@@ -3,7 +3,6 @@
 
 #include "OSC/Game/MainGameMode.h"
 
-#include "EngineUtils.h"
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
 #include "GameFramework/GameStateBase.h"
@@ -11,6 +10,13 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseController.h"
+#include "Khc/Gimmick/MainGameState.h"
+#include "Net/UnrealNetwork.h"
+#include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
+#include "Interfaces/VoiceInterface.h"
+#include "OSC/PlayerBaseState.h"
+
 
 AMainGameMode::AMainGameMode()
 {
@@ -21,6 +27,21 @@ AMainGameMode::AMainGameMode()
 void AMainGameMode::BeginPlay()
 {
 	Super::BeginPlay();
+
+	IOnlineSubsystem* Subsystem = Online::GetSubsystem(GetWorld());
+	if (Subsystem)
+	{
+		// 보이스 인터페이스를 찾아서 멤버 변수 'VoiceInterface'에 저장
+		VoiceInterface = Subsystem->GetVoiceInterface();
+		if (VoiceInterface.IsValid())
+		{
+			UE_LOG(LogTemp, Log, TEXT("AMainGameMode: Voice Interface successfully cached on server."));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("AMainGameMode: Failed to get Voice Interface!"));
+		}
+	}
 }
 
 void AMainGameMode::StartPlay()
@@ -80,6 +101,32 @@ void AMainGameMode::Tick(float DeltaTime)
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+
+	APlayerBaseState* PlayerState = NewPlayer->GetPlayerState<APlayerBaseState>();
+	if (PlayerState)
+	{
+		int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
+
+		if (PlayerCount == 1)
+		{
+			PlayerState->SetCanMove(true);
+		}
+		else
+		{
+			PlayerState->SetCanMove(false);
+		}
+	}
+
+	if (NewPlayer && NewPlayer->PlayerState && VoiceInterface.IsValid())
+	{
+		FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();
+		if (UniqueNetId.IsValid())
+		{
+			VoiceInterface->RegisterRemoteTalker(*UniqueNetId);
+			UE_LOG(LogTemp, Log, TEXT("Player '%s' has been registered as a remote talker."), *NewPlayer->GetName());
+		}
+	}
+	
 	for (AInteractableObjectBase* Interactable : AllInteractableObjectsInLevel)
 	{
 		if (Interactable)
@@ -125,4 +172,16 @@ void AMainGameMode::EndSimulation()
 	{
 		UGameplayStatics::OpenLevel(GetWorld(), FName("/Game/OSC/Map/ResultLevel"));
 	}, 0.5f, false);
+}
+
+void AMainGameMode::CompleteVoiceEvent()
+{
+	if (HasAuthority())
+	{
+		AMainGameState* GS = GetGameState<AMainGameState>();
+		if (GS)
+		{
+			GS->bVoiceEventCompleted = true;
+		}
+	}
 }

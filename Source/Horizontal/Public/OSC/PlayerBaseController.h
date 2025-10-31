@@ -29,6 +29,8 @@ protected:
 	/** Gameplay Initialization */
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+	
 	/** Possessed pawn initialization */
 	virtual void OnPossess(APawn* aPawn) override;
 
@@ -63,5 +65,22 @@ public:
 	void OpenResultLevel();
 protected:
 	void SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS);
+
+public:
+	TArray<TSharedRef<const FUniqueNetId>> Talkers;
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestWakeUp();
+
+	bool bVoiceChatInitialized = false;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<class UUserWidget> SleepingWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UUserWidget> SleepingWidgetInstance;
+
+	UPROPERTY(EditAnywhere)
+	float WakeUpAmplitude = 0.5f;
 };
 

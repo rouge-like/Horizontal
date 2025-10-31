@@ -10,11 +10,14 @@
 #include "Components/TextBlock.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/SpectatorPawn.h"
+#include "Khc/Gimmick/MainGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseState.h"
 #include "OSC/Game/MainGameMode.h"
 #include "OSC/UI/EvaluationItem.h"
 #include "OSC/UI/ResultUI.h"
+#include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -28,6 +31,87 @@ APlayerBaseController::APlayerBaseController()
 void APlayerBaseController::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void APlayerBaseController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+		if (!IsLocalController()) return;
+
+	AMainGameState* GS = GetWorld()->GetGameState<AMainGameState>();
+	if (!GS) return;
+
+    APlayerBaseState* PS = GetPlayerState<APlayerBaseState>();
+    if (!PS) return;
+
+    IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld());
+    if (!OSS) return;
+    
+    IOnlineVoicePtr VoiceInterface = OSS->GetVoiceInterface();
+    if (!VoiceInterface.IsValid()) return;
+
+	if (GS->bVoiceEventCompleted)
+	{
+		if (bVoiceChatInitialized)
+		{
+			VoiceInterface->StopNetworkedVoice(0);
+			bVoiceChatInitialized = false;
+			UE_LOG(LogTemp, Log, TEXT("Player %s (Event End) Mic OFF"), *PS->GetPlayerName());
+		}
+		return;
+	}
+
+    if (PS->bCanMove)
+    {
+        if (!bVoiceChatInitialized)
+        {
+            VoiceInterface->StartNetworkedVoice(0);
+            bVoiceChatInitialized = true;
+            UE_LOG(LogTemp, Log, TEXT("Player %s (1P) Mic ON"), *PS->GetPlayerName());
+        }
+    }
+    else
+    {
+	    // [2P 로직: 잠들어 있는 플레이어]
+    	if (SleepingWidgetInstance == nullptr)
+    	{
+    		SleepingWidgetInstance = CreateWidget<UUserWidget>(this, SleepingWidgetClass);
+    		SleepingWidgetInstance->AddToViewport();
+    		SetInputMode(FInputModeUIOnly());
+    	}
+
+    	
+        // 아직 마이크를 끄지 않았다면 끕니다 (단 한 번만 실행).
+        if (bVoiceChatInitialized)
+        {
+             VoiceInterface->StopNetworkedVoice(0);
+             bVoiceChatInitialized = false;
+             UE_LOG(LogTemp, Log, TEXT("Player %s (2P) Mic OFF"), *PS->GetPlayerName());
+        }
+
+        // 다른 '깨어있는' 플레이어의 소리를 듣습니다.
+        for (APlayerState* OtherPS : GS->PlayerArray)
+        {
+           if (!OtherPS || OtherPS == PS) continue; 
+           
+           APlayerBaseState* OtherBasePS = Cast<APlayerBaseState>(OtherPS);
+           if (OtherBasePS && OtherBasePS->bCanMove) // 1P를 찾음
+           {
+              FUniqueNetIdPtr UniqueNetId = OtherPS->GetUniqueId().GetUniqueNetId();
+              if (UniqueNetId.IsValid())
+              {
+                 float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
+                 if (Amplitude > WakeUpAmplitude)
+                 {
+                    Server_RequestWakeUp(); // "깨어남" 요청
+                 	SleepingWidgetInstance->RemoveFromParent();
+                    return; 
+                 }
+              }
+           }
+        }
+    }
 }
 
 void APlayerBaseController::OnPossess(APawn* aPawn)
@@ -109,6 +193,33 @@ void APlayerBaseController::SetValue(EValueType Type, float& OutValue, APlayerBa
 		default:
 			OutValue = 0;
 			break;
+	}
+}
+
+void APlayerBaseController::Server_RequestWakeUp_Implementation()
+{
+	APlayerBaseState* WakingPlayerPS = GetPlayerState<APlayerBaseState>();
+	if (WakingPlayerPS)
+	{
+		WakingPlayerPS->SetCanMove(true);
+	}
+
+	AGameStateBase* GS = GetWorld()->GetGameState();
+	if (!GS) return;
+
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		APlayerBaseState* OtherPS = Cast<APlayerBaseState>(PS);
+		if (OtherPS && OtherPS != WakingPlayerPS && OtherPS->bCanMove)
+		{
+			OtherPS->SetCanMove(true);
+		}
+	}
+
+	AMainGameMode* GameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	if (GameMode)
+	{
+		GameMode->CompleteVoiceEvent(); // "보이스 이벤트 끝!"
 	}
 }
 

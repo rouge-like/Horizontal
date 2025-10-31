@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "OnlineSubsystem.h"
 #include "GameFramework/GameModeBase.h"
 #include "MainGameMode.generated.h"
 
@@ -33,7 +34,11 @@ private:
 
 	bool bCanEndSimulation = false;
 
+	IOnlineVoicePtr VoiceInterface;
+	
 public:
 	void OnClientEndSimulation();
 	void EndSimulation();
+	void CompleteVoiceEvent();
+
 };

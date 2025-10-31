@@ -160,4 +160,12 @@ public:
 	TMap<EValueType, FString> ValueTitleString;
 
 	float TotalScore;
+
+	// 시작 상호작용
+	void SetCanMove(bool bNewState);
+	UFUNCTION()
+	void OnRep_CanMove();
+
+	UPROPERTY(ReplicatedUsing = OnRep_CanMove)
+	bool bCanMove = false;
 };
