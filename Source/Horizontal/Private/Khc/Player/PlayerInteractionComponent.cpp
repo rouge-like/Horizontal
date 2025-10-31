@@ -8,6 +8,8 @@
 #include "Khc/NPC/NPCBase.h"
 #include "Khc/NPC/Component/NPCInteractionComponent.h"
 #include "Khc/Player/DialogueManagerComponent.h"
+#include "OSC/PlayerBase.h"
+#include "OSC/Item/UsableItemBase.h"
 
 
 class UDialogueManagerComponent;
@@ -135,7 +137,15 @@ void UPlayerInteractionComponent::Server_RequestInteraction_Implementation(
 		{
 			return; // 다른 사람이 먼저 상호작용 시작함
 		}
-       
+		
+		if (AUsableItemBase* Item = Cast<AUsableItemBase>(TargetToInteractWith->GetOwner()))
+		{
+			APlayerBase* OwnerPlayer = Cast<APlayerBase>(GetOwner());
+			Item->OnPickup(OwnerPlayer);
+			if (OwnerPlayer->HasInteractedWith(Item)) return;
+			OwnerPlayer->RegisterInteractedItem(Item); 
+		}
+		
 		APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
 		if (PC)
 		{

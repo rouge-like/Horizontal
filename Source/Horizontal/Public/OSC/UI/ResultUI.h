@@ -6,16 +6,20 @@
 #include "Blueprint/UserWidget.h"
 #include "ResultUI.generated.h"
 
+class UButton;
 class UEvaluationItem;
 /**
  * 
  */
+enum class EValueType : uint8;
+class UTextBlock;
 UCLASS()
 class HORIZONTAL_API UResultUI : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	virtual void NativeConstruct() override;
 	UPROPERTY(meta = (BindWidget))
 	UEvaluationItem* PlayTimeItem;
 
@@ -39,4 +43,18 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	UEvaluationItem* WrongScoreItem;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* TotalScoreText;
+	
+	UPROPERTY(meta = (BindWidget))
+	UButton* EndButton;
+	
+	UPROPERTY()
+	TArray<UEvaluationItem*> EvaluationItems;
+	
+	void SetValue(int32 ValueIndex, const FString& ValueString, const FString& TitleString, const FString& EvaluationString);
+	void SetResult(float TotalScore, int32 Rank);
+	UFUNCTION()
+	void OnEndButtonClicked();
 };

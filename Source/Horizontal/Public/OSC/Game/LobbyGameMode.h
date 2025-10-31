@@ -20,6 +20,9 @@ class HORIZONTAL_API ALobbyGameMode : public AGameModeBase
 protected:
 	UPROPERTY(EditDefaultsOnly)
 	FString URL;
+	
+	UPROPERTY(EditDefaultsOnly)
+	FName LevelName;
 
 	int32 PawnCount;
 public:
@@ -28,4 +31,11 @@ public:
 
 	UFUNCTION()
 	void OnJoinedPlayer() const;
+
+	UFUNCTION()
+	void CheckPlayerReady();
+
+
+	UFUNCTION()
+	void OnGameLevelLoaded();
 };

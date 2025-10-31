@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OnlineSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "PlayerBaseController.generated.h"
 
@@ -13,6 +12,8 @@ class UResultUI;
  */
 class UInputMappingContext;
 class UDialogueManagerComponent;
+class APlayerBaseState;
+enum class EValueType : uint8;
 UCLASS()
 class HORIZONTAL_API APlayerBaseController : public APlayerController
 {
@@ -28,8 +29,6 @@ protected:
 	/** Gameplay Initialization */
 	virtual void BeginPlay() override;
 
-	virtual void Tick(float DeltaTime) override;
-
 	/** Possessed pawn initialization */
 	virtual void OnPossess(APawn* aPawn) override;
 
@@ -44,7 +43,11 @@ protected:
 
 	UPROPERTY()
 	UResultUI* ResultUI;
-	
+
+	bool bIsClientEndSimulation = false;
+
+	UPROPERTY(EditAnywhere)
+	FString ResultURL;
 public:
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void ServerChangeToSpectator();
@@ -52,20 +55,13 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowResultUI();
 
-	TArray<TSharedRef<const FUniqueNetId>> Talkers;
+	void ShowEndButton();
 
-	UFUNCTION(Server, Reliable)
-	void Server_RequestWakeUp();
+	UFUNCTION(Client, Reliable)
+	void GoToResultLevel();
 
-	bool bVoiceChatInitialized = false;
-
-	UPROPERTY(EditAnywhere, Category = "UI")
-	TSubclassOf<class UUserWidget> SleepingWidgetClass;
-
-	/** 런타임에 생성된 '잠자는 중' UI 인스턴스 */
-	UPROPERTY()
-	TObjectPtr<UUserWidget> SleepingWidgetInstance;
-
-	UPROPERTY(EditAnywhere)
-	float WakeUpAmplitude = 0.5f;
+	void OpenResultLevel();
+protected:
+	void SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS);
 };
+

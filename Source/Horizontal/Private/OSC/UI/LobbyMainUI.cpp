@@ -5,6 +5,7 @@
 
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "OSC/LobbyPlayerController.h"
 #include "OSC/Game/BaseGameInstance.h"
 #include "OSC/Game/LobbyGameMode.h"
 
@@ -13,13 +14,15 @@ void ULobbyMainUI::NativeConstruct()
 	Super::NativeConstruct();
 
 	StartGameButton->OnClicked.AddDynamic(this, &ULobbyMainUI::OnStartButtonClick);
+	ReadyButton->OnClicked.AddDynamic(this, &ULobbyMainUI::OnReadyButtonClick);
+	
 	StartGameButton->SetVisibility(GetWorld()->GetFirstPlayerController()->HasAuthority()? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-
+	ReadyButton->SetVisibility(GetWorld()->GetFirstPlayerController()->HasAuthority()? ESlateVisibility::Hidden : ESlateVisibility::Visible);
+	
 	UBaseGameInstance* BGI = Cast<UBaseGameInstance>(GetGameInstance());
 	if (IsValid(BGI))
 	{
 		DisplayName->SetText(FText::FromString(BGI->GetDisplayName()));
-		UE_LOG(LogTemp, Warning, TEXT("Display Name : %s"), *BGI->GetDisplayName());
 	}
 }
 
@@ -29,11 +32,26 @@ void ULobbyMainUI::OnStartButtonClick()
 	LGM->StartGame();
 }
 
+void ULobbyMainUI::OnReadyButtonClick()
+{
+	if (!IsValid(PlayerController))
+	{
+		PlayerController = Cast<ALobbyPlayerController>(GetWorld()->GetFirstPlayerController());
+		if (!IsValid(PlayerController))
+			return;
+	}
+	bIsReady = !bIsReady;
+	PlayerController->ServerPlayerReady(bIsReady);
+}
+
 void ULobbyMainUI::SetPlayerCount(int32 Count)
 {
 	if (PlayerCounter)
 		PlayerCounter->SetText(FText::FromString(FString::Printf(TEXT("플레이어 : %d / 2"), Count)));
+	
+}
 
-	if (GetWorld()->GetFirstPlayerController()->HasAuthority() && Count == 2)
-		StartGameButton->SetIsEnabled(true);
+void ULobbyMainUI::SetStartButtonEnable(bool Enable)
+{
+	StartGameButton->SetIsEnabled(Enable);
 }

@@ -32,7 +32,7 @@ public:
 	void ShowCrosshair();
 	void HideCrosshair();
 
-
+	bool bIsInteracting;
 protected:
 	// 'E' 키를 눌렀을 때 클라이언트에서 실행될 함수
 	void OnInteractPressed();

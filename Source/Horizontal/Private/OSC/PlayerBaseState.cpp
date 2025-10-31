@@ -3,11 +3,9 @@
 
 #include "OSC/PlayerBaseState.h"
 
-#include "OnlineSubsystem.h"
-#include "Blueprint/UserWidget.h"
-#include "Interfaces/VoiceInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBase.h"
+#include "OSC/Game/BaseGameInstance.h"
 
 APlayerBaseState::APlayerBaseState()
 {
@@ -22,8 +20,8 @@ void APlayerBaseState::BeginPlay()
 	{
 		GetWorldTimerManager().SetTimer(UpdateValueTimer, this, &APlayerBaseState::UpdateValue, 1, true);
 	}
-	
 
+	GI = GetWorld()->GetGameInstance<UBaseGameInstance>();
 }
 
 void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -38,7 +36,6 @@ void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty
 	DOREPLIFETIME(APlayerBaseState, RepRescueScore);
 	DOREPLIFETIME(APlayerBaseState, RepExtinguishScore);
 	DOREPLIFETIME(APlayerBaseState, RepWrongScore);
-	DOREPLIFETIME(APlayerBaseState, bCanMove);
 }
 
 void APlayerBaseState::Tick(float DeltaTime)
@@ -47,6 +44,7 @@ void APlayerBaseState::Tick(float DeltaTime)
 	
 	if (!HasAuthority()) return;
 	if (!PlayerBase) return;
+	if (bIsInteracting) return;
 	PlayTime += DeltaTime;
 	if (PlayerBase->IsSprinting()) RunningTime += DeltaTime;
 	if (!PlayerBase->IsCrouched()) NotCrouchedTime += DeltaTime;
@@ -84,7 +82,8 @@ void APlayerBaseState::SetPawn(APawn* Pawn)
 
 void APlayerBaseState::AddFireTime(float DeltaTime)
 {
-	InFireTime += DeltaTime;
+	if (bIsInteracting) return;
+		InFireTime += DeltaTime;
 }
 
 void APlayerBaseState::AddRecueScore(float Value)
@@ -104,82 +103,61 @@ void APlayerBaseState::AddWrongScore(float Value)
 
 FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 {
+	FString Result;
 	if (EvaluationMap.Contains(EvaluationKey))
 	{
 		FEvaluationData Data = EvaluationMap[EvaluationKey];
-
+		
 		if (Data.ValueType == EValueType::PlayTime)
 		{
-			return Data.GetEvaluation(PlayTime);
+			Result = Data.GetEvaluation(PlayTime);
 		}
 		if (Data.ValueType == EValueType::InFireTime)
 		{
-			return Data.GetEvaluation(InFireTime);
+			Result =  Data.GetEvaluation(InFireTime);
 		}
 		if (Data.ValueType == EValueType::RunningTime)
 		{
-			return Data.GetEvaluation(RunningTime);
+			Result =  Data.GetEvaluation(RunningTime);
 		}
 		if (Data.ValueType == EValueType::NotCrouchedTime)
 		{
-			return Data.GetEvaluation(NotCrouchedTime);
+			Result =  Data.GetEvaluation(NotCrouchedTime);
 		}
 		if (Data.ValueType == EValueType::NoMaskTime)
 		{
-			return Data.GetEvaluation(NoMaskTime);
+			Result =  Data.GetEvaluation(NoMaskTime);
 		}
 		if (Data.ValueType == EValueType::RescueScore)
 		{
-			return Data.GetEvaluation(RescueScore);
+			Result =  Data.GetEvaluation(RescueScore);
 		}
 		if (Data.ValueType == EValueType::ExtinguishScore)
 		{
-			return Data.GetEvaluation(ExtinguishScore);
+			Result =  Data.GetEvaluation(ExtinguishScore);
 		}
 		if (Data.ValueType == EValueType::WrongScore)
 		{
-			return Data.GetEvaluation(WrongScore);
+			Result =  Data.GetEvaluation(WrongScore);
 		}
 	}
-	return FString(TEXT("유효하지 않음"));
-}
-
-void APlayerBaseState::SetCanMove(bool bNewState)
-{
-	if (HasAuthority() && bCanMove != bNewState)
+	if (Result == TEXT("우수"))
 	{
-		bCanMove = bNewState;
-		OnRep_CanMove(); // 서버 자신에게도 즉시 적용
+		TotalScore += 12.5f;
+		GI->AddRank(EvaluationKey, 0);
 	}
-}
-
-void APlayerBaseState::OnRep_CanMove()
-{
-	APlayerController* PC = GetPlayerController();
-	if (PC && PC->IsLocalController())
+	else if (Result == TEXT("양호"))
 	{
-		if (bCanMove)
-		{
-			PC->SetInputMode(FInputModeGameOnly());
-			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 활성화 (깨어남)"), *GetPlayerName());
-			//          
-			// if (SleepingWidgetInstance)
-			// {
-			// 	SleepingWidgetInstance->RemoveFromParent();
-			// 	SleepingWidgetInstance = nullptr;
-			// }
-		}
-		else
-		{
-			PC->SetInputMode(FInputModeUIOnly());
-			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 비활성화 (잠듦)"), *GetPlayerName());
-
-			// if (!SleepingWidgetInstance && SleepingWidgetClass)
-			// {
-			// 	
-			// 	SleepingWidgetInstance->AddToViewport();
-			// }
-		}
+		TotalScore += 8;
+		GI->AddRank(EvaluationKey, 1);
 	}
+	else if (Result == TEXT("미흡"))
+	{
+		TotalScore += 3.5;
+		GI->AddRank(EvaluationKey, 2);
+	}
+
+	GI->TotalScore = TotalScore;
+	return Result;
 }
 

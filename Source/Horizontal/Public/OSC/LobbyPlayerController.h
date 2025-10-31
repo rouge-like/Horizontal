@@ -21,7 +21,9 @@ class HORIZONTAL_API ALobbyPlayerController : public APlayerController
 protected:
 	UPROPERTY(EditDefaultsOnly)
 	TSubclassOf<ULobbyMainUI> MainUIClass;
-
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UUserWidget> LoadingUIClass;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	ULobbyMainUI* MainUI;
 	
@@ -33,8 +35,11 @@ protected:
 
 	UFUNCTION(Server, Reliable)
 	void ServerOnJoinComplete();
-
+	
 public:
+	UFUNCTION(Client, Reliable)
+	void ClientMakeLoadingUI();
+	
 	UFUNCTION(Client, Reliable)
 	void ClientSetPlayerCount(int32 Count);
 	
@@ -43,6 +48,10 @@ public:
 	
 	void SetPlayerCount(int32 Count);
 
+	void SetStartButtonEnable(bool Enable);
+
 	UPROPERTY(VisibleAnywhere)
 	FVector PawnSpawnLocation;
+
+	bool bIsReady = false;
 };
