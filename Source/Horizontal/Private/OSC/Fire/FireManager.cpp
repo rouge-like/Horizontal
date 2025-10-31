@@ -93,7 +93,8 @@ void AFireManager::BeginPlay()
     FTimerDelegate TimerDelegate;
     TimerDelegate.BindLambda([this]
     {
-        if (!GetWorld()) return;
+        if (!IsValid(this)) return;
+        if (!IsValid(GetWorld())) return;
         
         for (int32 RootIndex : RootCellIndices)
         {
