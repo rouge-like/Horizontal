@@ -58,4 +58,14 @@ public:
 	void Server_RequestWakeUp();
 
 	bool bVoiceChatInitialized = false;
+
+	UPROPERTY(EditAnywhere, Category = "UI")
+	TSubclassOf<class UUserWidget> SleepingWidgetClass;
+
+	/** 런타임에 생성된 '잠자는 중' UI 인스턴스 */
+	UPROPERTY()
+	TObjectPtr<UUserWidget> SleepingWidgetInstance;
+
+	UPROPERTY(EditAnywhere)
+	float WakeUpAmplitude = 0.5f;
 };

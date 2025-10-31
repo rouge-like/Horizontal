@@ -22,6 +22,8 @@ void APlayerBaseState::BeginPlay()
 	{
 		GetWorldTimerManager().SetTimer(UpdateValueTimer, this, &APlayerBaseState::UpdateValue, 1, true);
 	}
+	
+
 }
 
 void APlayerBaseState::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -158,25 +160,25 @@ void APlayerBaseState::OnRep_CanMove()
 	{
 		if (bCanMove)
 		{
-			PC->EnableInput(PC);
+			PC->SetInputMode(FInputModeGameOnly());
 			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 활성화 (깨어남)"), *GetPlayerName());
-            
-			if (SleepingWidgetInstance)
-			{
-				SleepingWidgetInstance->RemoveFromParent();
-				SleepingWidgetInstance = nullptr;
-			}
+			//          
+			// if (SleepingWidgetInstance)
+			// {
+			// 	SleepingWidgetInstance->RemoveFromParent();
+			// 	SleepingWidgetInstance = nullptr;
+			// }
 		}
 		else
 		{
-			PC->DisableInput(PC);
+			PC->SetInputMode(FInputModeUIOnly());
 			UE_LOG(LogTemp, Warning, TEXT("Player %s: 입력 비활성화 (잠듦)"), *GetPlayerName());
 
-			if (!SleepingWidgetInstance && SleepingWidgetClass)
-			{
-				SleepingWidgetInstance = CreateWidget<UUserWidget>(PC, SleepingWidgetClass);
-				SleepingWidgetInstance->AddToViewport();
-			}
+			// if (!SleepingWidgetInstance && SleepingWidgetClass)
+			// {
+			// 	
+			// 	SleepingWidgetInstance->AddToViewport();
+			// }
 		}
 	}
 }

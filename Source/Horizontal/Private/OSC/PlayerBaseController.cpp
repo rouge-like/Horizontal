@@ -27,6 +27,7 @@ APlayerBaseController::APlayerBaseController()
 	PlayerCameraManagerClass = AHorizontalCameraManager::StaticClass();
 
 	DialogueManagerComponent = CreateDefaultSubobject<UDialogueManagerComponent>(TEXT("DialogueManagerComponent"));
+
 }
 
 void APlayerBaseController::BeginPlay()
@@ -74,8 +75,14 @@ void APlayerBaseController::Tick(float DeltaTime)
     }
     else
     {
-        // [2P 로직: 잠들어 있는 플레이어]
-        
+	    // [2P 로직: 잠들어 있는 플레이어]
+    	if (SleepingWidgetInstance == nullptr)
+    	{
+    		SleepingWidgetInstance = CreateWidget<UUserWidget>(this, SleepingWidgetClass);
+    		SleepingWidgetInstance->AddToViewport();
+    	}
+
+    	
         // 아직 마이크를 끄지 않았다면 끕니다 (단 한 번만 실행).
         if (bVoiceChatInitialized)
         {
@@ -96,9 +103,10 @@ void APlayerBaseController::Tick(float DeltaTime)
               if (UniqueNetId.IsValid())
               {
                  float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
-                 if (Amplitude > 0.5f)
+                 if (Amplitude > WakeUpAmplitude)
                  {
                     Server_RequestWakeUp(); // "깨어남" 요청
+                 	SleepingWidgetInstance->RemoveFromParent();
                     return; 
                  }
               }
