@@ -18,6 +18,8 @@ class HORIZONTAL_API AMainGameState : public AGameStateBase
 public:
     UPROPERTY(Replicated)
     bool bVoiceEventCompleted;
+    UPROPERTY(Replicated)
+	bool bSleepPlayerSetting = false;
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

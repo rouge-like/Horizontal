@@ -107,9 +107,11 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 	{
 		int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
 
-		if (PlayerCount == 1)
+		AMainGameState* GS = Cast<AMainGameState>(GetWorld()->GetGameState());
+		if (GS->bSleepPlayerSetting == false)
 		{
 			PlayerState->SetCanMove(true);
+			GS->bSleepPlayerSetting = true;
 		}
 		else
 		{

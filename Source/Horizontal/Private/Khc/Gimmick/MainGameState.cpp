@@ -8,4 +8,5 @@ void AMainGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(AMainGameState, bVoiceEventCompleted);
+    DOREPLIFETIME(AMainGameState, bSleepPlayerSetting);
 }
