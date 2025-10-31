@@ -18,6 +18,7 @@ class HORIZONTAL_API AMainGameMode : public AGameModeBase
 
 	virtual void BeginPlay() override;
 	virtual void StartPlay() override;
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 	// 새로운 플레이어가 성공적으로 로그인했을 때 서버에서 호출되는 함수
@@ -31,9 +32,13 @@ private:
 	UPROPERTY()
 	TArray<ANPCBase*> AllNPCsInLevel;
 
-	IOnlineVoicePtr VoiceInterface;
+	bool bCanEndSimulation = false;
 
+	IOnlineVoicePtr VoiceInterface;
+	
 public:
+	void OnClientEndSimulation();
+	void EndSimulation();
 	void CompleteVoiceEvent();
 
 };

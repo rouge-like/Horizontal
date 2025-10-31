@@ -6,6 +6,7 @@
 #include "Engine/GameInstance.h"
 #include "BaseGameInstance.generated.h"
 
+enum class EValueType : uint8;
 /**
  * 
  */
@@ -40,7 +41,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void EndLoadingScreen(UWorld* LoadedWorld);
 
-	
+	TMap<EValueType, int32> Ranks;
 
-	
+	void AddRank(EValueType Type, int32 Rank);
+
+	float TotalScore;
 };

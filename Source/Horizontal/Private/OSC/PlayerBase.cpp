@@ -60,11 +60,6 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 			EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &APlayerBase::HandleSprintReleased);
 		}
 
-		if (PickupAction)
-		{
-			EnhancedInput->BindAction(PickupAction, ETriggerEvent::Started, this, &APlayerBase::HandlePickupStarted);
-		}
-
 		if (DropAction)
 		{
 			EnhancedInput->BindAction(DropAction, ETriggerEvent::Started, this, &APlayerBase::HandleDropStarted);
@@ -124,16 +119,6 @@ void APlayerBase::SetSprintingInternal(bool bNewSprinting)
 	RefreshMovementSpeed();
 }
 
-void APlayerBase::SetPickupInternal(AUsableItemBase* Item)
-{
-	if (!IsValid(Item))
-	{
-		return;
-	}
-
-	Item->OnPickup(this);
-}
-
 void APlayerBase::SetDropInternal()
 {
 	InventoryComp->RemoveSelectedItem();
@@ -189,64 +174,6 @@ void APlayerBase::HandleSprintReleased()
 
 	ServerSetSprinting(false);
 }
-void APlayerBase::HandlePickupStarted()
-{
-	//
-	if (InventoryComp->GetSelectedItem() != nullptr)
-	{
-		HandleDropStarted();
-		return;
-	}
-	FVector ViewLocation;
-	FRotator ViewRotation;
-	GetActorEyesViewPoint(ViewLocation, ViewRotation);
-
-	const FVector OverlapCenter = ViewLocation + ViewRotation.Vector() * (PickupRadius * 0.5f);
-	const float QueryRadius = PickupRadius;
-
-	FCollisionObjectQueryParams ObjectParams;
-	ObjectParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-	ObjectParams.AddObjectTypesToQuery(ECC_PhysicsBody);
-
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PlayerPickup), false, this);
-	QueryParams.AddIgnoredActor(this);
-
-	TArray<FOverlapResult> Overlaps;
-	AUsableItemBase* ClosestItem = nullptr;
-	float ClosestDistanceSq = MAX_FLT;
-
-	DrawDebugSphere(GetWorld(), OverlapCenter, QueryRadius, 12, FColor::Purple);
-	if (GetWorld()->OverlapMultiByObjectType(Overlaps, OverlapCenter, FQuat::Identity, ObjectParams, FCollisionShape::MakeSphere(QueryRadius), QueryParams))
-	{
-		for (const FOverlapResult& Result : Overlaps)
-		{
-			AUsableItemBase* Candidate = Cast<AUsableItemBase>(Result.GetActor());
-			if (!IsValid(Candidate) || !Candidate->CanBePickedUp())
-			{
-				continue;
-			}
-
-			const float DistanceSq = FVector::DistSquared(Candidate->GetActorLocation(), ViewLocation);
-			if (DistanceSq < ClosestDistanceSq)
-			{
-				ClosestDistanceSq = DistanceSq;
-				ClosestItem = Candidate;
-			}
-		}
-	}
-
-	if (!IsValid(ClosestItem))
-	{
-		return;
-	}
-
-	if (IsLocallyControlled())
-	{
-		SetPickupInternal(ClosestItem);
-	}
-
-	ServerSetPickup(ClosestItem);
-}
 
 void APlayerBase::HandleDropStarted()
 {
@@ -270,26 +197,6 @@ void APlayerBase::ServerSetSprinting_Implementation(bool bNewSprinting)
 	SetSprintingInternal(bNewSprinting);
 }
 
-void APlayerBase::ServerSetPickup_Implementation(AUsableItemBase* Item)
-{
-	if (!IsValid(Item))
-	{
-		return;
-	}
-
-	const float DistanceSq = FVector::DistSquared(Item->GetActorLocation(), GetActorLocation());
-	if (DistanceSq > FMath::Square(PickupRadius))
-	{
-		return;
-	}
-
-	if (!Item->CanBePickedUp())
-	{
-		return;
-	}
-
-	SetPickupInternal(Item);
-}
 
 void APlayerBase::ServerSetDrop_Implementation()
 {
@@ -299,4 +206,19 @@ void APlayerBase::ServerSetDrop_Implementation()
 void APlayerBase::OnRep_IsSprinting()
 {
 	RefreshMovementSpeed();
+}
+
+void APlayerBase::RegisterInteractedItem(AUsableItemBase* Item)
+{
+	if (!IsValid(Item)) return;
+
+	TSubclassOf<AUsableItemBase> ItemClass = Item->GetClass();
+	InteractedItemClasses.Add(ItemClass);
+}
+
+bool APlayerBase::HasInteractedWith(AUsableItemBase* Item) const
+{
+	if (!IsValid(Item)) return false;
+
+	return InteractedItemClasses.Contains(Item->GetClass());
 }

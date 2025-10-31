@@ -32,11 +32,14 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_IsMove)
 	bool bIsMove;
 
+	UPROPERTY(ReplicatedUsing = OnRep_IsMove)
+	bool bIsBackMove;
+
 	UPROPERTY(ReplicatedUsing = OnRep_ObstacleMove)
 	bool bObstacleMove; // 장애물 이동용
 
 	UPROPERTY(ReplicatedUsing = OnRep_ObstacleMove)
-	bool bMainDoorMove; // 장애물 이동용
+	bool bMainDoorMove; 
 
 	UFUNCTION()
 	void OnRep_IsMove();

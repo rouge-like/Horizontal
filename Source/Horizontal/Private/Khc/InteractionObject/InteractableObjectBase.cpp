@@ -102,6 +102,8 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 		originRotYaw = GetActorRotation().Yaw;
 		SoundManager->SpawnSoundAtLocation(FName(TEXT("DoorOpen")), GetActorLocation());
 
+
+		
 		OnRep_IsMove();
 	}
 	else if (EventTag == "OpenMainDoor")
@@ -126,11 +128,21 @@ void AInteractableObjectBase::OnDialogueEventReceived(FName EventTag, AActor* In
 			UE_LOG(LogTemp, Error, TEXT("EmergencyBell BGM asset NOT found at hardcoded path!"));
 		}	
 	}
+	else if (EventTag == "CloseDoor")
+	{
+		bIsBackMove = true;
+		originRotYaw = GetActorRotation().Yaw;
+		SoundManager->SpawnSoundAtLocation(FName(TEXT("DoorClose")), GetActorLocation());
+
+
+		
+		OnRep_IsMove();
+	}
 }
 
 void AInteractableObjectBase::OnRep_IsMove()
 {
-	if (bIsMove)
+	if (bIsMove || bIsBackMove)
 	{
 		PrimaryActorTick.bCanEverTick = true;
 	}
@@ -175,7 +187,34 @@ void AInteractableObjectBase::Tick(float DeltaTime)
 
 		if (FMath::IsNearlyEqual(NewYaw, TargetYaw))
 		{
+			if (InteractionComponent)
+			{
+				InteractionComponent->SetInteractable(true);
+				InteractionComponent->DialogueStartLabel = FName(TEXT("Door02_1"));
+			}
+			
 			bIsMove = false; // 이동 완료
+		}
+	}
+
+	if (bIsBackMove)
+	{
+		const float TargetYaw = originRotYaw + 140.0f;
+		float CurrentYaw = GetActorRotation().Yaw;
+		const float RotationSpeed = 100.0f; 
+		float NewYaw = FMath::FInterpConstantTo(CurrentYaw, TargetYaw, DeltaTime, RotationSpeed);
+
+		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
+
+		if (FMath::IsNearlyEqual(NewYaw, TargetYaw))
+		{
+			if (InteractionComponent)
+			{
+				InteractionComponent->SetInteractable(true);
+				InteractionComponent->DialogueStartLabel = FName(TEXT("Door01_1"));
+			}
+			
+			bIsBackMove = false; // 이동 완료
 		}
 	}
 

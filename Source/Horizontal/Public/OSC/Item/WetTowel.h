@@ -6,6 +6,7 @@
 #include "OSC/Item/UsableItemBase.h"
 #include "WetTowel.generated.h"
 
+class UBoxComponent;
 UCLASS()
 class HORIZONTAL_API AWetTowel : public AUsableItemBase
 {
@@ -24,6 +25,9 @@ protected:
 	virtual void HandleStartUse() override;
 	virtual void HandleStopUse() override;
 
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* BoxComp;
+	
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* MeshComp;
 

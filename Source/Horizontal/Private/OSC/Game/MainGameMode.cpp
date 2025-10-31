@@ -2,23 +2,26 @@
 
 
 #include "OSC/Game/MainGameMode.h"
+
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "Khc/NPC/NPCBase.h"
 #include "Kismet/GameplayStatics.h"
-
+#include "OSC/PlayerBaseController.h"
+#include "Khc/Gimmick/MainGameState.h"
+#include "Net/UnrealNetwork.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 #include "Interfaces/VoiceInterface.h"
-#include "GameFramework/PlayerState.h"
-#include "Net/UnrealNetwork.h"
 #include "OSC/PlayerBaseState.h"
-#include <Khc/Gimmick/MainGameState.h>
+
 
 AMainGameMode::AMainGameMode()
 {
+	PrimaryActorTick.bStartWithTickEnabled = true;
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AMainGameMode::BeginPlay()
@@ -82,6 +85,19 @@ void AMainGameMode::StartPlay()
 	}
 }
 
+void AMainGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bCanEndSimulation)
+	{
+		if (GetWorld()->GetFirstPlayerController()->WasInputKeyJustPressed(EKeys::Enter))
+		{
+			EndSimulation();
+		}
+	}
+}
+
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
@@ -89,18 +105,19 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 	APlayerBaseState* PlayerState = NewPlayer->GetPlayerState<APlayerBaseState>();
 	if (PlayerState)
 	{
-		int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
-
-		if (PlayerCount == 1)
+		//int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
+		//AMainGameState* GS = Cast<AMainGameState>(GetWorld()->GetGameState());
+		if (NewPlayer->IsLocalController())
 		{
 			PlayerState->SetCanMove(true);
+			//GS->bSleepPlayerSetting = true;
 		}
 		else
 		{
 			PlayerState->SetCanMove(false);
 		}
 	}
-	
+
 	if (NewPlayer && NewPlayer->PlayerState && VoiceInterface.IsValid())
 	{
 		FUniqueNetIdPtr UniqueNetId = NewPlayer->PlayerState->GetUniqueId().GetUniqueNetId();
@@ -130,11 +147,38 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 	UE_LOG(LogTemp, Log, TEXT("A new player '%s' has logged in. Bound events to %d interactable objects."), *NewPlayer->GetName(), AllInteractableObjectsInLevel.Num());
 }
 
+void AMainGameMode::OnClientEndSimulation()
+{
+	APlayerBaseController* PC = Cast<APlayerBaseController>(GetWorld()->GetFirstPlayerController());
+	PC->ShowEndButton();
+	bCanEndSimulation = true;
+}
+
+void AMainGameMode::EndSimulation()
+{
+	for (FConstPlayerControllerIterator PCI = GetWorld()->GetPlayerControllerIterator(); PCI; ++PCI)
+	{
+		if (APlayerController* PC = PCI->Get())
+		{
+			if (APlayerBaseController* PBC = Cast<APlayerBaseController>(PC))
+			{
+				if (!PBC->IsLocalController())
+					PBC->GoToResultLevel();
+			}
+		}
+	}
+	
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
+	{
+		UGameplayStatics::OpenLevel(GetWorld(), FName("/Game/OSC/Map/ResultLevel"));
+	}, 0.5f, false);
+}
+
 void AMainGameMode::CompleteVoiceEvent()
 {
 	if (HasAuthority())
 	{
-		// GameMode의 변수 대신 GameState의 변수를 변경합니다.
 		AMainGameState* GS = GetGameState<AMainGameState>();
 		if (GS)
 		{

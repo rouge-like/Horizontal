@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "PlayerBaseState.generated.h"
 
+class UBaseGameInstance;
 /**
  * 
  */
@@ -19,8 +20,10 @@ enum class EValueType : uint8
 	NoMaskTime,
 	RescueScore,
 	ExtinguishScore,
-	WrongScore
+	WrongScore,
+	Max UMETA(Hidden)
 };
+ENUM_RANGE_BY_COUNT(EValueType, EValueType::Max)
 
 USTRUCT(BlueprintType)
 struct HORIZONTAL_API FEvaluationData
@@ -49,13 +52,13 @@ public:
 		{
 			if (Value >= ExcellentValue) return FString(TEXT("우수"));
 			if (Value >= GoodValue) return FString(TEXT("양호"));
-			return FString(TEXT("나쁨"));
+			return FString(TEXT("미흡"));
 		}
 		else
 		{
 			if (Value <= ExcellentValue) return FString(TEXT("우수"));
 			if (Value <= GoodValue) return FString(TEXT("양호"));
-			return FString(TEXT("나쁨"));
+			return FString(TEXT("미흡"));
 		}
 	};
 };
@@ -71,6 +74,9 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY()
+	UBaseGameInstance* GI;
+	
 	UPROPERTY(EditDefaultsOnly)
 	float Size = 35;
 
@@ -146,6 +152,14 @@ public:
 	
 	FString GetEvaluation(EValueType EvaluationKey);
 
+	bool bIsInteracting = false;
+	
+	UPROPERTY(EditAnywhere)
+	TMap<EValueType, FString> ValueUnitString;
+	UPROPERTY(EditAnywhere)
+	TMap<EValueType, FString> ValueTitleString;
+
+	float TotalScore;
 
 	// 시작 상호작용
 	void SetCanMove(bool bNewState);
@@ -154,11 +168,4 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_CanMove)
 	bool bCanMove = false;
-
-	UPROPERTY(EditAnywhere, Category = "UI")
-	TSubclassOf<class UUserWidget> SleepingWidgetClass;
-
-	/** 런타임에 생성된 '잠자는 중' UI 인스턴스 */
-	UPROPERTY()
-	TObjectPtr<UUserWidget> SleepingWidgetInstance;
 };

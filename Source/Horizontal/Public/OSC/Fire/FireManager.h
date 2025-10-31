@@ -103,6 +103,7 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     void CheckPlayerInFire(float DeltaSeconds);
 
@@ -194,7 +195,7 @@ private:
     void SpreadFireFromCell(int32 CellIndex);
     void SpreadFireRecursive(int32 SourceIndex, int32 TargetIndex, const FBox& SourceBounds);
 
-    FFireCellTickResult ProcessCellRecursive(int32 CellIndex, float DeltaSeconds);
+    //FFireCellTickResult ProcessCellRecursive(int32 CellIndex, float DeltaSeconds);
     FFireCellTickResult ProcessCollapseRecursive(int32 CellIndex, float DeltaSeconds);
 
     bool AreBoxesPotentiallyAdjacent(const FBox& SourceBounds, const FBox& TargetBounds) const;

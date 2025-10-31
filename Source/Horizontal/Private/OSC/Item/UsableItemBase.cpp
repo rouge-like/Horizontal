@@ -77,6 +77,8 @@ void AUsableItemBase::OnDrop()
     bPendingEquipAttach = false;
     bIsEquipped = false;
 
+    InteractableComponent->SetInteractable(true);
+    
     SetPickupAvailability(true);
 }
 
@@ -181,17 +183,6 @@ bool AUsableItemBase::TryAttachToOwnerMesh()
     if (!IsValid(LocalOwner))
     {
         return false;
-    }
-
-    APlayerController* PC = Cast<APlayerController>(OwningPlayer->GetController());
-    if (IsValid(PC))
-    {
-        UDialogueManagerComponent* DialogueManager = PC->FindComponentByClass<UDialogueManagerComponent>();
-        if (IsValid(DialogueManager))
-        {
-            // 어떤 타입의 컴포넌트든 상관없이 DialogueStartLabel을 가져와 대화 시작
-            DialogueManager->StartDialogue(InteractableComponent, InteractableComponent->DialogueStartLabel);
-        }
     }
     
     if (USkeletalMeshComponent* PlayerMesh = LocalOwner->GetFirstPersonMesh())

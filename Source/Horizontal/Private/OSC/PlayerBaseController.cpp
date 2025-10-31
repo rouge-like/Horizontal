@@ -6,19 +6,18 @@
 #include "Khc/Player/DialogueManagerComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HorizontalCameraManager.h"
+#include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/SpectatorPawn.h"
+#include "Khc/Gimmick/MainGameState.h"
+#include "Kismet/GameplayStatics.h"
 #include "OSC/PlayerBaseState.h"
+#include "OSC/Game/MainGameMode.h"
 #include "OSC/UI/EvaluationItem.h"
 #include "OSC/UI/ResultUI.h"
-
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
-#include "GameFramework/GameStateBase.h"
-#include "Interfaces/VoiceInterface.h"
-#include "OSC/Game/MainGameMode.h"
-#include "Khc/Gimmick/MainGameState.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -37,7 +36,7 @@ void APlayerBaseController::BeginPlay()
 void APlayerBaseController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (!IsLocalController()) return;
 
 	AMainGameState* GS = GetWorld()->GetGameState<AMainGameState>();
@@ -74,8 +73,15 @@ void APlayerBaseController::Tick(float DeltaTime)
     }
     else
     {
-        // [2P 로직: 잠들어 있는 플레이어]
-        
+	    // [2P 로직: 잠들어 있는 플레이어]
+    	if (SleepingWidgetInstance == nullptr)
+    	{
+    		SleepingWidgetInstance = CreateWidget<UUserWidget>(this, SleepingWidgetClass);
+    		SleepingWidgetInstance->AddToViewport();
+    		SetInputMode(FInputModeUIOnly());
+    	}
+
+    	
         // 아직 마이크를 끄지 않았다면 끕니다 (단 한 번만 실행).
         if (bVoiceChatInitialized)
         {
@@ -96,9 +102,10 @@ void APlayerBaseController::Tick(float DeltaTime)
               if (UniqueNetId.IsValid())
               {
                  float Amplitude = VoiceInterface->GetAmplitudeOfRemoteTalker(*UniqueNetId);
-                 if (Amplitude > 0.5f)
+                 if (Amplitude > WakeUpAmplitude)
                  {
                     Server_RequestWakeUp(); // "깨어남" 요청
+                 	SleepingWidgetInstance->RemoveFromParent();
                     return; 
                  }
               }
@@ -106,7 +113,6 @@ void APlayerBaseController::Tick(float DeltaTime)
         }
     }
 }
-
 
 void APlayerBaseController::OnPossess(APawn* aPawn)
 {
@@ -118,6 +124,12 @@ void APlayerBaseController::OnPossess(APawn* aPawn)
 	{
 		PBS->SetPawn(aPawn);
 	}
+
+	if (!HasAuthority()) return;
+	if (IsLocalController())
+		aPawn->SetActorLocation(FVector(405.797079f,-202.379278f,1366.659345f));
+	else
+		aPawn->SetActorLocation(FVector(405.797079f,-618.379278f,1051.659345f));
 }
 
 void APlayerBaseController::SetupInputComponent()
@@ -137,6 +149,59 @@ void APlayerBaseController::SetupInputComponent()
 	}
 }
 
+void APlayerBaseController::ShowEndButton()
+{
+	// 서버 온리
+	bIsClientEndSimulation = true;
+	if (ResultUI)
+	{
+		ResultUI->EndButton->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void APlayerBaseController::GoToResultLevel_Implementation()
+{
+	//UGameplayStatics::OpenLevel(GetWorld(), TEXT("/Game/OSC/Map/LobbyLevel"));
+	ClientTravel(ResultURL, TRAVEL_Absolute);
+}
+void APlayerBaseController::OpenResultLevel()
+{
+	UGameplayStatics::OpenLevel(GetWorld(), FName(ResultURL));
+}
+void APlayerBaseController::SetValue(EValueType Type, float& OutValue, APlayerBaseState* PBS)
+{
+	switch (Type)
+	{
+		case EValueType::PlayTime:
+			OutValue = PBS->PlayTime;
+			break;
+		case EValueType::InFireTime:
+			OutValue = PBS->InFireTime;
+			break;
+		case EValueType::RunningTime:
+			OutValue = PBS->RunningTime;
+			break;
+		case EValueType::NotCrouchedTime:
+			OutValue = PBS->NotCrouchedTime;
+			break;
+		case EValueType::NoMaskTime:
+			OutValue = PBS->NoMaskTime;
+			break;
+		case EValueType::RescueScore:
+			OutValue = PBS->RescueScore;
+			break;
+		case EValueType::ExtinguishScore:
+			OutValue = PBS->ExtinguishScore;
+			break;
+		case EValueType::WrongScore:
+			OutValue = PBS->WrongScore;
+			break;
+		default:
+			OutValue = 0;
+			break;
+	}
+}
+
 void APlayerBaseController::Server_RequestWakeUp_Implementation()
 {
 	APlayerBaseState* WakingPlayerPS = GetPlayerState<APlayerBaseState>();
@@ -144,10 +209,10 @@ void APlayerBaseController::Server_RequestWakeUp_Implementation()
 	{
 		WakingPlayerPS->SetCanMove(true);
 	}
-    
+
 	AGameStateBase* GS = GetWorld()->GetGameState();
 	if (!GS) return;
-    
+
 	for (APlayerState* PS : GS->PlayerArray)
 	{
 		APlayerBaseState* OtherPS = Cast<APlayerBaseState>(PS);
@@ -167,7 +232,7 @@ void APlayerBaseController::Server_RequestWakeUp_Implementation()
 void APlayerBaseController::ServerChangeToSpectator_Implementation()
 {
 	APawn* P = GetPawn();
-	AGameModeBase* GM = GetWorld()->GetAuthGameMode();
+	AMainGameMode* GM = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
 	
 	ASpectatorPawn* Spectator = GetWorld()->SpawnActor<ASpectatorPawn>(GM->SpectatorClass, P->GetTransform());
 	Possess(Spectator);
@@ -177,9 +242,17 @@ void APlayerBaseController::ServerChangeToSpectator_Implementation()
 		PBS->UpdateValue();
 	
 	if (IsLocalPlayerController())
+	{
 		ClientShowResultUI_Implementation();
+		if (bIsClientEndSimulation) GM->OnClientEndSimulation();
+	}
 	else
+	{
 		ClientShowResultUI();
+
+		bIsClientEndSimulation = true;
+		GM->OnClientEndSimulation();
+	}
 }
 
 void APlayerBaseController::ClientShowResultUI_Implementation()
@@ -190,58 +263,20 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 	if (IsValid(ResultUI))
 	{
 		APlayerBaseState* PBS = GetPlayerState<APlayerBaseState>();
-
+		
 		if (IsValid(PBS))
 		{
-			FString PlayTimeValue = FString::Printf(TEXT("%.1f초"), PBS->PlayTime);
-			FString PlayTimeEvaluation = PBS->GetEvaluation(EValueType::PlayTime);
-			ResultUI->PlayTimeItem->Title->SetText(FText::FromString(TEXT("탈출")));
-			ResultUI->PlayTimeItem->Value->SetText(FText::FromString(PlayTimeValue));
-			ResultUI->PlayTimeItem->Evaluation->SetText(FText::FromString(PlayTimeEvaluation));
+			for (EValueType Type : TEnumRange<EValueType>())
+			{
+				float Value;
+				SetValue(Type, Value, PBS);
+				FString ValueString = FString::Printf(TEXT("%.1f%s"),Value, *PBS->ValueUnitString[Type]);
+				FString TileString = PBS->ValueTitleString[Type];
+				FString EvaluationString = PBS->GetEvaluation(Type);
+				ResultUI->SetValue(static_cast<int>(Type), ValueString,TileString , EvaluationString);
+			}
 
-			FString InFireTime = FString::Printf(TEXT("%.1f초"), PBS->InFireTime);
-			FString InFireTimeEvaluation = PBS->GetEvaluation(EValueType::InFireTime);
-			ResultUI->InFireTimeItem->Title->SetText(FText::FromString(TEXT("불속 노출")));
-			ResultUI->InFireTimeItem->Value->SetText(FText::FromString(InFireTime));
-			ResultUI->InFireTimeItem->Evaluation->SetText(FText::FromString(InFireTimeEvaluation));
-			
-			FString RunningTime = FString::Printf(TEXT("%.1f초"), PBS->RunningTime);
-			FString RunningTimeEvaluation = PBS->GetEvaluation(EValueType::RunningTime);
-			ResultUI->RunningTimeItem->Title->SetText(FText::FromString(TEXT("달리기")));
-			ResultUI->RunningTimeItem->Value->SetText(FText::FromString(RunningTime));
-			ResultUI->RunningTimeItem->Evaluation->SetText(FText::FromString(RunningTimeEvaluation));
-			
-			FString NotCrouchedTime = FString::Printf(TEXT("%.1f초"), PBS->NotCrouchedTime);
-			FString NotCrouchedTimeEvaluation = PBS->GetEvaluation(EValueType::NotCrouchedTime);
-			ResultUI->NotCrouchedTimeItem->Title->SetText(FText::FromString(TEXT("엎드리지 않음")));
-			ResultUI->NotCrouchedTimeItem->Value->SetText(FText::FromString(NotCrouchedTime));
-			ResultUI->NotCrouchedTimeItem->Evaluation->SetText(FText::FromString(NotCrouchedTimeEvaluation));
-
-			FString NoMaskTime = FString::Printf(TEXT("%.1f초"), PBS->NoMaskTime);
-			FString NoMaskTimeEvaluation = PBS->GetEvaluation(EValueType::NoMaskTime);
-			ResultUI->NoMaskTimeItem->Title->SetText(FText::FromString(TEXT("입 미가림")));
-			ResultUI->NoMaskTimeItem->Value->SetText(FText::FromString(NoMaskTime));
-			ResultUI->NoMaskTimeItem->Evaluation->SetText(FText::FromString(NoMaskTimeEvaluation));
-
-			FString RescueScore = FString::Printf(TEXT("%.1f점"), PBS->RescueScore);
-			FString RescueScoreEvaluation = PBS->GetEvaluation(EValueType::RescueScore);
-			ResultUI->RescueScoreItem->Title->SetText(FText::FromString(TEXT("구조")));
-			ResultUI->RescueScoreItem->Value->SetText(FText::FromString(RescueScore));
-			ResultUI->RescueScoreItem->Evaluation->SetText(FText::FromString(RescueScoreEvaluation));
-
-			FString ExtinguishScore = FString::Printf(TEXT("%.1f점"), PBS->ExtinguishScore);
-			FString ExtinguishScoreEvaluation = PBS->GetEvaluation(EValueType::ExtinguishScore);
-			ResultUI->ExtinguishScoreItem->Title->SetText(FText::FromString(TEXT("초기 진압")));
-			ResultUI->ExtinguishScoreItem->Value->SetText(FText::FromString(ExtinguishScore));
-			ResultUI->ExtinguishScoreItem->Evaluation->SetText(FText::FromString(ExtinguishScoreEvaluation));
-			
-
-			FString WrongScore = FString::Printf(TEXT("%.1f점"), PBS->WrongScore);
-			FString WrongScoreEvaluation = PBS->GetEvaluation(EValueType::WrongScore);
-			ResultUI->WrongScoreItem->Title->SetText(FText::FromString(TEXT("잘못된 행동")));
-			ResultUI->WrongScoreItem->Value->SetText(FText::FromString(WrongScore));
-			ResultUI->WrongScoreItem->Evaluation->SetText(FText::FromString(WrongScoreEvaluation));
-			
+			ResultUI->SetResult(PBS->TotalScore, 0);
 		}
 	}
 }

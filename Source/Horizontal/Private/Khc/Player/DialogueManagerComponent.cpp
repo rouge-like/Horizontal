@@ -48,7 +48,13 @@ void UDialogueManagerComponent::StartDialogue(class UInteractableComponentBase* 
 
 	CurrentInteractableComponent = TargetComp; // 통합된 변수에 저장
 	CurrentDialogueLabel = StartingLabel;
-
+	
+	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
+	if (PlayerState)
+	{
+		PlayerState->bIsInteracting = true;
+	}
+	
 	if (UNPCInteractionComponent* NPCComp = Cast<UNPCInteractionComponent>(TargetComp))
 	{
 		ANPCBase* NPC = Cast<ANPCBase>(NPCComp->GetOwner());
@@ -124,7 +130,10 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 	}
 
 	APlayerBaseState* PlayerState = (Cast<APlayerBaseController>(GetOwner())->GetPlayerState<APlayerBaseState>());
-
+	if (PlayerState)
+	{
+		PlayerState->bIsInteracting = false;
+	}
 	if (DialogueRow && PlayerState && !DialogueRow->EventTag.IsNone())
 	{
 		FString EventTagString = DialogueRow->EventTag.ToString();
@@ -152,7 +161,7 @@ void UDialogueManagerComponent::HandleDialogueEnd(const FDialogueRow* DialogueRo
 			PlayerState->AddWrongScore(10);
 		}
 	}
-
+	
 	Client_EndDialogue();
 }
 
@@ -318,6 +327,40 @@ void UDialogueManagerComponent::Client_UpdateDialogueUI_Implementation(FName Dia
 		{
 			DialogueWidgetInstance->ShowImage(3, 600, 700);
 		}
+		else if (DialogueLabel == "Throw_1")
+		{
+			DialogueWidgetInstance->ShowImage(4, 1000, 600);
+		}
+		else if (DialogueLabel == "NPC03_10")
+		{
+			DialogueWidgetInstance->ShowImage(5, 600, 600);
+		}
+		else if (DialogueLabel == "Door02_2")
+		{
+			DialogueWidgetInstance->ShowImage(6, 400, 600);
+		}
+		else if (DialogueLabel == "Phone_Good_1")
+		{
+			DialogueWidgetInstance->ShowImage(7, 600, 600);
+		}
+		else if (DialogueLabel == "Object01_2" || DialogueLabel == "Object01_3")
+		{
+			DialogueWidgetInstance->ShowImage(8, 700, 600);
+		}
+		else if (DialogueLabel == "Wallet_Good_1" || DialogueLabel == "Wallet_Bad_1")
+		{
+			DialogueWidgetInstance->ShowImage(9, 700, 600);
+		}
+		else if (DialogueLabel == "Stair01_2" || DialogueLabel == "Stair01_3")
+		{
+			DialogueWidgetInstance->ShowImage(10, 700, 700);
+		}
+		else if (DialogueLabel == "Towel_2")
+		{
+			DialogueWidgetInstance->ShowImage(11, 600, 600);
+		}
+		
+		
 
 	}
 }
