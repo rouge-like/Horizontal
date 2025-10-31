@@ -125,8 +125,11 @@ void APlayerBaseController::OnPossess(APawn* aPawn)
 		PBS->SetPawn(aPawn);
 	}
 
-	if (HasAuthority()) aPawn->SetActorLocation(FVector(405.797079f,-202.379278f,1366.659345f));
-	else aPawn->SetActorLocation(FVector(405.797079f,-618.379278f,1051.659345f));
+	if (!HasAuthority()) return;
+	if (IsLocalController())
+		aPawn->SetActorLocation(FVector(405.797079f,-202.379278f,1366.659345f));
+	else
+		aPawn->SetActorLocation(FVector(405.797079f,-618.379278f,1051.659345f));
 }
 
 void APlayerBaseController::SetupInputComponent()
