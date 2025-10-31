@@ -37,7 +37,7 @@ void APlayerBaseController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-		if (!IsLocalController()) return;
+	if (!IsLocalController()) return;
 
 	AMainGameState* GS = GetWorld()->GetGameState<AMainGameState>();
 	if (!GS) return;
@@ -124,6 +124,9 @@ void APlayerBaseController::OnPossess(APawn* aPawn)
 	{
 		PBS->SetPawn(aPawn);
 	}
+
+	if (HasAuthority()) aPawn->SetActorLocation(FVector(405.797079f,-202.379278f,1366.659345f));
+	else aPawn->SetActorLocation(FVector(405.797079f,-618.379278f,1051.659345f));
 }
 
 void APlayerBaseController::SetupInputComponent()

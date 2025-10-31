@@ -138,6 +138,8 @@ void AAimableItemBase::OnEquip()
                 OriginFOV = Camera->FieldOfView;
             }
         }
+
+        LocalOwner->SetHandsState(EHandsState::None);
     }
 }
 

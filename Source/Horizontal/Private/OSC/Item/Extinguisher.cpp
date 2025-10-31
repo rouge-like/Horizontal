@@ -291,10 +291,7 @@ void AExtinguisher::UpdateSpray(float DeltaTime)
 
                 if (IsValid(PBS))
                     FireManager->ApplySuppressionInSphere(PBS, ImpactPoint, SuppressionRadius, SuppressionPerSecond * DeltaTime);
-
-#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
-                DrawDebugSphere(GetWorld(), ImpactPoint, SuppressionRadius, 16, FColor::Yellow, false, 0, 0, 1.5f);
-#endif
+                
             }
         }
     }
