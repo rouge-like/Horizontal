@@ -80,6 +80,7 @@ void APlayerBaseController::Tick(float DeltaTime)
     	{
     		SleepingWidgetInstance = CreateWidget<UUserWidget>(this, SleepingWidgetClass);
     		SleepingWidgetInstance->AddToViewport();
+    		SetInputMode(FInputModeUIOnly());
     	}
 
     	
