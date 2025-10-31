@@ -3,7 +3,6 @@
 
 #include "OSC/Game/ResultGameMode.h"
 
-#include "Blueprint/UserWidget.h"
 #include "OSC/Game/BaseGameInstance.h"
 #include "OSC/UI/CertificateUI.h"
 
@@ -11,7 +10,10 @@
 void AResultGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
+	GetWorld()->GetFirstPlayerController()->SetInputMode(FInputModeUIOnly());
+	GetWorld()->GetFirstPlayerController()->SetShowMouseCursor(true);
+	
 	if (MainUIClass)
 	{
 		MainUI = CreateWidget<UCertificateUI>(GetWorld(), MainUIClass);

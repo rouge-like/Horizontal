@@ -2,6 +2,8 @@
 
 
 #include "OSC/Game/MainGameMode.h"
+
+#include "EngineUtils.h"
 #include "Khc/InteractionObject/InteractableObjectBase.h"
 
 #include "GameFramework/GameStateBase.h"
@@ -12,6 +14,8 @@
 
 AMainGameMode::AMainGameMode()
 {
+	PrimaryActorTick.bStartWithTickEnabled = true;
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void AMainGameMode::BeginPlay()
@@ -60,6 +64,19 @@ void AMainGameMode::StartPlay()
 	}
 }
 
+void AMainGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bCanEndSimulation)
+	{
+		if (GetWorld()->GetFirstPlayerController()->WasInputKeyJustPressed(EKeys::Enter))
+		{
+			EndSimulation();
+		}
+	}
+}
+
 void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
@@ -86,6 +103,7 @@ void AMainGameMode::OnClientEndSimulation()
 {
 	APlayerBaseController* PC = Cast<APlayerBaseController>(GetWorld()->GetFirstPlayerController());
 	PC->ShowEndButton();
+	bCanEndSimulation = true;
 }
 
 void AMainGameMode::EndSimulation()
@@ -101,7 +119,7 @@ void AMainGameMode::EndSimulation()
 			}
 		}
 	}
-
+	
 	FTimerHandle TimerHandle;
 	GetWorldTimerManager().SetTimer(TimerHandle, [this]()
 	{

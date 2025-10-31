@@ -22,8 +22,7 @@ void UResultUI::NativeConstruct()
 	EvaluationItems.Add(RescueScoreItem);
 	EvaluationItems.Add(ExtinguishScoreItem);
 	EvaluationItems.Add(WrongScoreItem);
-
-	EndButton->SetVisibility(ESlateVisibility::Hidden);
+	
 	EndButton->OnClicked.AddDynamic(this, &UResultUI::OnEndButtonClicked);
 }
 

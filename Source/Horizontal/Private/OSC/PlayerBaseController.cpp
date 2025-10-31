@@ -62,7 +62,6 @@ void APlayerBaseController::SetupInputComponent()
 void APlayerBaseController::ShowEndButton()
 {
 	// 서버 온리
-	
 	bIsClientEndSimulation = true;
 	if (ResultUI)
 	{
@@ -126,11 +125,15 @@ void APlayerBaseController::ServerChangeToSpectator_Implementation()
 		PBS->UpdateValue();
 	
 	if (IsLocalPlayerController())
+	{
 		ClientShowResultUI_Implementation();
+		if (bIsClientEndSimulation) GM->OnClientEndSimulation();
+	}
 	else
 	{
 		ClientShowResultUI();
-		
+
+		bIsClientEndSimulation = true;
 		GM->OnClientEndSimulation();
 	}
 }
@@ -157,13 +160,6 @@ void APlayerBaseController::ClientShowResultUI_Implementation()
 			}
 
 			ResultUI->SetResult(PBS->TotalScore, 0);
-
-			bIsClientEndSimulation = true;
-			
-			if (ResultUI)
-			{
-				ResultUI->EndButton->SetVisibility(ESlateVisibility::Visible);
-			}
 		}
 	}
 }

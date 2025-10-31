@@ -44,4 +44,6 @@ public:
 	TMap<EValueType, int32> Ranks;
 
 	void AddRank(EValueType Type, int32 Rank);
+
+	float TotalScore;
 };

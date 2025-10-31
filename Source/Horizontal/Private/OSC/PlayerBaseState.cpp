@@ -157,7 +157,7 @@ FString APlayerBaseState::GetEvaluation(EValueType EvaluationKey)
 		GI->AddRank(EvaluationKey, 2);
 	}
 
-
+	GI->TotalScore = TotalScore;
 	return Result;
 }
 
