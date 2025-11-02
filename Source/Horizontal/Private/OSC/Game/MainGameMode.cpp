@@ -102,21 +102,21 @@ void AMainGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	APlayerBaseState* PlayerState = NewPlayer->GetPlayerState<APlayerBaseState>();
-	if (PlayerState)
-	{
-		//int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
-		//AMainGameState* GS = Cast<AMainGameState>(GetWorld()->GetGameState());
-		if (NewPlayer->IsLocalController())
-		{
-			PlayerState->SetCanMove(true);
-			//GS->bSleepPlayerSetting = true;
-		}
-		else
-		{
-			PlayerState->SetCanMove(false);
-		}
-	}
+	// APlayerBaseState* PlayerState = NewPlayer->GetPlayerState<APlayerBaseState>();
+	// if (PlayerState)
+	// {
+	// 	//int32 PlayerCount = GetWorld()->GetGameState()->PlayerArray.Num();
+	// 	//AMainGameState* GS = Cast<AMainGameState>(GetWorld()->GetGameState());
+	// 	if (NewPlayer->IsLocalController())
+	// 	{
+	// 		PlayerState->SetCanMove(true);
+	// 		//GS->bSleepPlayerSetting = true;
+	// 	}
+	// 	else
+	// 	{
+	// 		PlayerState->SetCanMove(false);
+	// 	}
+	// }
 
 	if (NewPlayer && NewPlayer->PlayerState && VoiceInterface.IsValid())
 	{
