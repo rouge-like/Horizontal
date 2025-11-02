@@ -47,16 +47,16 @@ protected:
     UFUNCTION(Client, Reliable)
     void ClientHandleThrow();
     
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
     USphereComponent* CollisionComponent;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
     UStaticMeshComponent* MeshComponent;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
     UProjectileMovementComponent* ProjectileMovement;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Visual", meta=(AllowPrivateAccess="true"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Visual", meta=(AllowPrivateAccess="true"))
     USplineComponent* TrajectorySpline;
 
     UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category="Visual", meta=(AllowPrivateAccess="true"))

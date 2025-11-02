@@ -18,6 +18,7 @@
 #include "OSC/UI/ResultUI.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
+#include "OSC/PlayerBase.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 
@@ -125,6 +126,7 @@ void APlayerBaseController::OnPossess(APawn* aPawn)
 		PBS->SetPawn(aPawn);
 	}
 
+	if (!Cast<APlayerBase>(aPawn)) return;
 	if (!HasAuthority()) return;
 	
 	if (IsLocalController())
