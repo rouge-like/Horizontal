@@ -31,23 +31,23 @@ void UNPCAStarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickT
         return;
     }
     
-    if (bIsMoving)
-    {
-        // 1. 실제 목표 지점(SafetyZone)을 빨간색 구로 표시S
-        DrawDebugSphere(GetWorld(), Destination, 100.f, 12, FColor::Red, false, -1.f, 0, 10.f);
+    //if (bIsMoving)
+    //{
+    //    // 1. 실제 목표 지점(SafetyZone)을 빨간색 구로 표시S
+    //    DrawDebugSphere(GetWorld(), Destination, 100.f, 12, FColor::Red, false, -1.f, 0, 10.f);
 
-        if (CurrentPath.Num() > 0)
-        {
-            // 2. A*가 계산한 경로의 최종 도착 지점을 파란색 구로 표시
-            DrawDebugSphere(GetWorld(), CurrentPath.Last(), 120.f, 12, FColor::Blue, false, -1.f, 0, 10.f);
+    //    if (CurrentPath.Num() > 0)
+    //    {
+    //        // 2. A*가 계산한 경로의 최종 도착 지점을 파란색 구로 표시
+    //        DrawDebugSphere(GetWorld(), CurrentPath.Last(), 120.f, 12, FColor::Blue, false, -1.f, 0, 10.f);
 
-            // 3. 현재 따라가야 할 경로를 초록색 선으로 표시
-            for (int32 i = CurrentPathIndex; i < CurrentPath.Num() - 1; ++i)
-            {
-                DrawDebugLine(GetWorld(), CurrentPath[i], CurrentPath[i + 1], FColor::Green, false, -1.f, 0, 5.f);
-            }
-        }
-    }
+    //        // 3. 현재 따라가야 할 경로를 초록색 선으로 표시
+    //        for (int32 i = CurrentPathIndex; i < CurrentPath.Num() - 1; ++i)
+    //        {
+    //            DrawDebugLine(GetWorld(), CurrentPath[i], CurrentPath[i + 1], FColor::Green, false, -1.f, 0, 5.f);
+    //        }
+    //    }
+    //}
 
 
     // --- 경로 따라가기 로직 ---
