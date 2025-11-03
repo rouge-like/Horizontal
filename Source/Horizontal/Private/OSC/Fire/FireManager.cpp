@@ -839,103 +839,7 @@ void AFireManager::ActivateFireVFX(int32 CellIndex)
     // 멀티캐스트 RPC로 모든 클라이언트에 머티리얼 변경 전파
     if (Cell.AttachedComponent.IsValid())
     {
-        UPrimitiveComponent* PrimComp = Cell.AttachedComponent.Get();
-        if (UMeshComponent* MC = Cast<UMeshComponent>(PrimComp))
-        {
-            // 제외할 액터 태그 확인
-            AActor* OwnerActor = MC->GetOwner();
-            bool bShouldExclude = false;
-            
-            if (OwnerActor)
-            {
-                for (const FName& ExcludedTag : ExcludedActorTags)
-                {
-                    if (OwnerActor->ActorHasTag(ExcludedTag))
-                    {
-                        bShouldExclude = true;
-                        UE_LOG(LogTemp, Log, TEXT("FireManager: 머티리얼 변경 제외 - Actor=%s, Tag=%s"), 
-                            *OwnerActor->GetName(), *ExcludedTag.ToString());
-                        break;
-                    }
-                }
-            }
-            
-            if (!bShouldExclude)
-            {
-                const int32 NumSlots = MC->GetNumMaterials();
-
-            auto InitBurnParams = [&](UMaterialInstanceDynamic* DMI, int32 SlotIndex)
-            {
-                // 불이 붙었을 때 파라미터 설정
-                DMI->SetVectorParameterValue(TEXT("BurnCenter"),      SpawnLocation);  
-                DMI->SetScalarParameterValue(TEXT("BurnRadius"),      OnFireBurnRadius); 
-                DMI->SetScalarParameterValue(TEXT("EdgeWidth"),       OnFireEdgeWidth);
-                DMI->SetScalarParameterValue(TEXT("EdgeFalloffPower"), EdgeFalloffPower);
-                DMI->SetScalarParameterValue(TEXT("BurnIntensity_G"), OnFireBurnIntensity_G);
-                DMI->SetScalarParameterValue(TEXT("Extinguished"),    0.f);
-                DMI->SetScalarParameterValue(TEXT("AshAmount"),       0.f);  // 불이 붙었을 때는 재 효과 없음
-                
-                UE_LOG(LogTemp, Log, TEXT("FireManager: 불 활성화 - CellIndex=%d, Slot=%d, Mesh=%s, BurnCenter=%s"), 
-                    CellIndex, SlotIndex, *MC->GetName(), *SpawnLocation.ToString());
-            };
-
-            for (int32 Slot = 0; Slot < NumSlots; ++Slot)
-            {
-                const TTuple<TWeakObjectPtr<UMeshComponent>, int32> Key(MC, Slot);
-
-                // 1) 슬롯 캐시에 이미 MID가 있고 유효하면 건너뛰기 (첫 번째 셀이 이미 제어 중)
-                if (TWeakObjectPtr<UMaterialInstanceDynamic>* FoundPtr = BurnMICacheBySlot.Find(Key))
-                {
-                    if (UMaterialInstanceDynamic* Existing = FoundPtr->Get())
-                    {
-                        // 참조 카운트 증가
-                        int32& RefCount = BurnMIRefCount.FindOrAdd(Key, 0);
-                        RefCount++;
-                        
-                        // UE_LOG(LogTemp, Log, TEXT("FireManager: 스킵 - CellIndex=%d, Slot=%d, Mesh=%s (이미 다른 셀이 제어 중, RefCount=%d)"), 
-                        //     CellIndex, Slot, *MC->GetName(), RefCount);
-                        continue;
-                    }
-                    else
-                    {
-                        BurnMICacheBySlot.Remove(Key);
-                        BurnMIRefCount.Remove(Key);
-                    }
-                }
-
-                
-                UMaterialInterface* CurMat = MC->GetMaterial(Slot);
-                UMaterialInstanceDynamic* DMI = Cast<UMaterialInstanceDynamic>(CurMat);
-
-                // DMI가 없거나 BurnMaterial이 아니면 새로 생성
-                if (!DMI || DMI->Parent != BurnMaterial)
-                {
-                    DMI = MC->CreateDynamicMaterialInstance(Slot, BurnMaterial);
-                    if (!DMI) { continue; }
-                    
-                    UE_LOG(LogTemp, Log, TEXT("FireManager: 새 DMI 생성 - CellIndex=%d, Slot=%d, Mesh=%s"), 
-                        CellIndex, Slot, *MC->GetName());
-                }
-                else
-                {
-                    // 기존 DMI 재사용 (재점화 시 파라미터는 InitBurnParams에서 초기화됨)
-                    UE_LOG(LogTemp, Log, TEXT("FireManager: 기존 DMI 재사용 - CellIndex=%d, Slot=%d, Mesh=%s"), 
-                        CellIndex, Slot, *MC->GetName());
-                }
-
-                // 캐시에 없었다면 재점화 시나리오이므로 파라미터를 항상 초기화
-                InitBurnParams(DMI, Slot);
-
-                // 3) 슬롯 단위 캐시에 저장
-                BurnMICacheBySlot.Add(Key, DMI);
-                
-                // 4) 참조 카운트 초기화
-                BurnMIRefCount.Add(Key, 1);
-
-            
-            }
-            } // if (!bShouldExclude)
-        }
+        Multicast_UpdateBurnMaterial(Cell.AttachedComponent.Get(), SpawnLocation, CellIndex);
     }
 
     // 번짐 시작 (AVFXActor가 MPC_Fire를 제어함)
@@ -958,16 +862,13 @@ void AFireManager::DeactivateFireVFX(int32 CellIndex)
         return;
     }
     
-    //프리즈 추가(메테리얼 고정)
-    FreezeBurnMaterialAtCell(CellIndex);
-    
     if (!HasAuthority())
     {
         return;
     }
     
     // 멀티캐스트 RPC로 소화 애니메이션 시작 (서버에서만 호출)
-    if (Cells.IsValidIndex(CellIndex) && Cells[CellIndex].AttachedComponent.IsValid())
+    if (Cells[CellIndex].AttachedComponent.IsValid())
     {
         Multicast_StartExtinguishAnimation(Cells[CellIndex].AttachedComponent.Get(), CellIndex);
     }
