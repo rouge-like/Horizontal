@@ -132,12 +132,12 @@ void APlayerBaseController::OnPossess(APawn* aPawn)
 	if (IsLocalController())
 	{
 		aPawn->SetActorLocation(FVector(405.797079f,-202.379278f,1366.659345f));
-		if (PBS) PBS->SetCanMove(true);
+		if (PBS) PBS->SetCanMove(false);
 	}
 	else
 	{
 		aPawn->SetActorLocation(FVector(405.797079f,-618.379278f,1051.659345f));
-		if (PBS) PBS->SetCanMove(false);
+		if (PBS) PBS->SetCanMove(true);
 	}
 }
 
