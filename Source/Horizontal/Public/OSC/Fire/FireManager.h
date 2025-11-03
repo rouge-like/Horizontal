@@ -171,6 +171,7 @@ protected:
 
     TArray<int32> FreeCellIndices;
 
+    float CurrentTime = 0;
 private:
     void GenerateCellsFromActor(AActor& SourceActor);
     int32 CreateCell(const FVector& Center, const FVector& Extent, int32 Depth, int32 ParentIndex);

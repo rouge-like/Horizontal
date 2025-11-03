@@ -89,25 +89,17 @@ void AFireManager::BeginPlay()
 
     InitializeFireAreas();
 
-    FTimerHandle TimerHandle;
-    FTimerDelegate TimerDelegate;
-    TimerDelegate.BindLambda([this]
-    {
-        if (!IsValid(this)) return;
-        if (!IsValid(GetWorld())) return;
-        
-        for (int32 RootIndex : RootCellIndices)
-        {
-            if (!Cells.IsValidIndex(RootIndex))
-            {
-                continue;
-            }
-    
-            ProcessCollapseRecursive(RootIndex, 1);
-        }
-    });
-
-    GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 1, true);
+    // FTimerHandle TimerHandle;
+    // FTimerDelegate TimerDelegate;
+    // TimerDelegate.BindLambda([this]
+    // {
+    //     if (!IsValid(this)) return;
+    //     if (!IsValid(GetWorld())) return;
+    //     
+    //
+    // });
+    //
+    // GetWorldTimerManager().SetTimer(TimerHandle, TimerDelegate, 1, true);
 }
 
 void AFireManager::Tick(float DeltaSeconds)
@@ -158,6 +150,22 @@ void AFireManager::Tick(float DeltaSeconds)
     ActiveCells = MoveTemp(NextActiveCells);
 
     CheckPlayerInFire(DeltaSeconds);
+    
+    CurrentTime += DeltaSeconds;
+    if (CurrentTime > 1.0f)
+    {
+        CurrentTime = 0.0f;
+        
+        for (int32 RootIndex : RootCellIndices)
+        {
+            if (!Cells.IsValidIndex(RootIndex))
+            {
+                continue;
+            }
+    
+            ProcessCollapseRecursive(RootIndex, 1);
+        }
+    }
 }
 
 void AFireManager::EndPlay(const EEndPlayReason::Type EndPlayReason)
